@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VantageNotes</title>
+
+    <!-- Scripts and Styles -->
+    <script src="fengari-web.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/styles.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/cm.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/tabs.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/topbar.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/sidebar.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/search.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/transclusions.css') }}" />
+  </head>
+
+  <body>
+    
+    <!-- Topbar -->
+    <div class="topbar">
+      <input id="search-input" type="text" placeholder="Search..." />
+      <div id="search-results"></div>
+    </div>
+
+    <!-- Layout Grid -->
+    <main class="app-layout">
+
+      <!-- Example panes; you can add/remove any panes dynamically 
+      <div class="container" data-pane="pane1">
+        <div class="tab-bar" data-pane="pane1"></div>
+        <div class="tab-content" data-pane="pane1"></div>
+      </div>
+      -->
+
+      
+
+    </main>
+
+    <!-- Lua & JS -->
+    <script type="application/lua">
+      print("Hello World!")
+    </script>
+    <script src="{{ url_for('static', filename='dist/main.js') }}"></script>
+    
+    <div id="spinner" style="display:none;">Loading...</div>
+  </body>
+</html>

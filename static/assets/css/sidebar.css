@@ -1,0 +1,35 @@
+.panel {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin: 0px 0 8px 0;
+    background: #fafafa;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  
+  .panel-header {
+    padding: 10px 15px;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    background-color: #e0e0e0;
+    border-bottom: 1px solid #ccc;
+  }
+  
+  .panel-header:hover {
+    background-color: #d0d0d0;
+  }
+  
+  .panel-content {
+    padding: 10px 15px;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    overflow: hidden;
+    max-height: 1000px; /* large enough to show content */
+  }
+  
+  .panel.collapsed .panel-content {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+  

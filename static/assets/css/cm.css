@@ -1,0 +1,229 @@
+.cm-tag {
+    color: white;
+    background-color: #4CAF50;
+    border-radius: 4px;
+    padding: 0 4px;
+    font-weight: bold;
+  }
+
+  .cm-header {
+    font-weight: bold;
+    margin: 0.5em 0;
+    pointer-events: none;
+  }
+
+  .cm-header-1 {
+    font-size: 2em;
+  }
+  
+  .cm-header-2 {
+    font-size: 1.5em;
+  }
+  
+  .cm-header-3 {
+    font-size: 1.17em;
+  }
+  
+  .cm-header-4 {
+    font-size: 1em;
+  }
+  
+  .cm-header-5 {
+    font-size: 0.83em;
+  }
+  
+  .cm-header-6 {
+    font-size: 0.67em;
+  }
+  
+  .cm-list {
+    padding-left: 1.2em;
+    /* indent all lists */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  .cm-list-unordered::before {
+    content: "•";
+    color: #555;
+    position: absolute;
+    margin-left: -1.2em;
+  }
+  
+  .cm-list-ordered::before {
+    /* You could dynamically number, but CSS can't do it easily here */
+    content: "1.";
+    color: #555;
+    position: absolute;
+    margin-left: -1.2em;
+  }
+  
+  .cm-checklist-unchecked {
+    position: relative;
+    padding-left: 1.8em;
+  }
+  
+  .cm-checklist-checked {
+    position: relative;
+    padding-left: 1.8em;
+    color: gray;
+    text-decoration: line-through;
+  }
+  
+  /* Custom checkbox before the line */
+  .cm-checklist-unchecked::before,
+  .cm-checklist-checked::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.3em;
+    width: 1em;
+    height: 1em;
+    border: 2px solid #888;
+    border-radius: 3px;
+    background-color: white;
+  }
+  
+  .cm-checklist-checked::before {
+    background-color: #4caf50;
+    border-color: #4caf50;
+    /* A checkmark using CSS */
+    clip-path: polygon(
+      14% 44%, 0% 65%, 50% 100%, 100% 30%, 80% 0%, 43% 62%
+    );
+  }
+  
+  /* Indent checklist items based on spaces */
+.cm-line {
+  white-space: pre-wrap; /* to preserve indent spaces */
+}
+
+.cm-list {
+  position: relative;
+  padding-left: 2em; /* base padding */
+}
+
+/* Adjust padding based on indent level (example for 4 spaces) */
+.cm-line[data-indent="1"] {
+  padding-left: 2em;
+}
+.cm-line[data-indent="2"] {
+  padding-left: 4em;
+}
+.cm-line[data-indent="3"] {
+  padding-left: 6em;
+}
+/* and so on */
+
+
+.cm-checkbox-widget {
+  vertical-align: middle;
+  appearance: auto;
+}
+
+.cm-codeblock-label {
+  background: #8d8d8d;
+  color: #ececec;
+  font-style: italic;
+  padding-left: 0.5em;
+  line-height: 1.4; /* prevents overflow */
+  overflow: hidden;
+}
+
+
+.cm-codeblock {
+  background: #2e2f3d;
+  color: #ececec;
+
+}
+
+.cm-blockquote,
+.cm-blockquote-title {
+  display: block; /* this is safe only for line decorations */
+  pointer-events: auto;
+  user-select: text;
+  position: relative;
+  z-index: 0;
+}
+.cm-blockquote-title {
+  font-weight: bold;
+  background-color: #f0f4ff;
+  border-left: 4px solid #4a90e2;
+  padding-left: 0.75em;
+  pointer-events: auto;
+}
+
+.cm-blockquote {
+  background-color: #f9f9f9;
+  border-left: 4px solid #ccc;
+  padding-left: 0.75em;
+  pointer-events: auto;
+}
+
+.cm-inline-code {
+  background-color: #eee;
+  color: #c7254e;
+  font-family: monospace;
+  padding: 0 0.25em;
+  border-radius: 4px;
+  font-size: 0.95em;
+}
+
+.cm-list input[type="checkbox"] {
+  pointer-events: auto !important;
+  user-select: auto !important;
+
+}
+
+.cm-hyperlink {
+  color: blue;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Main editor container */
+.editor {
+  width: 100%;           /* or max-width: 100%; */
+  max-width: 100%;      /* prevent overflow beyond viewport */
+  overflow-x: hidden;    /* block horizontal scroll */
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Transclusion widget wrapper */
+.cm-transclusion-widget {
+  max-width: 100%;       /* Don't allow wider than container */
+  overflow-x: auto;      /* Allow horizontal scroll inside widget if needed */
+  box-sizing: border-box;
+}
+
+/* Make embedded editor's DOM not cause overflow */
+.cm-transclusion-widget > div {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.cm-scroller {
+  overflow-x: hidden;  /* disable horizontal scrolling */
+  overflow-y: auto;     /* allow vertical scrolling */
+  white-space: normal;  /* allow line wrapping */
+}
+
+
+
+
+
+.cm-content {
+  max-width: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.cm-transclusion-editor .cm-editor {
+  border: 1px solid #ccc;
+  padding: 0.5em;
+  background: #f9f9f9;
+}
+

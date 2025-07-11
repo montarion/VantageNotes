@@ -1,0 +1,50 @@
+.cm-transclusion-widget {
+    background-color: #f0f4ff;
+    border: 1px solid #a0b4ff;
+    border-radius: 3px;
+    /*padding: 2px 6px;*/
+    margin: 0 2px;
+    display: block;
+    flex-direction: column;
+    font-size: 0.9em;
+    cursor: pointer;
+    will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  position: relative; /* or absolute, but anchored correctly */
+  z-index: 10; 
+  }
+  
+  .cm-transclusion-label {
+    font-weight: bold;
+    color: #334;
+  }
+  
+  .cm-transclusion-preview {
+    font-size: 0.8em;
+    color: #666;
+  }
+  .cm-transclusion-hidden {
+    font-size: 0;
+    color: transparent;
+    position: absolute;
+    width: 0;
+    overflow: hidden;
+  }
+
+  .cm-transclusion-wrapper {
+    background-color: #f0f4ff;
+    border: 1px solid #a0b4ff;
+    border-radius: 3px;
+    transition: max-height 0.25s ease, opacity 0.25s ease;
+    overflow: hidden;
+    max-height: 500px; /* default expanded */
+    opacity: 1;
+  }
+  
+  .cm-transclusion-collapsed {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  
