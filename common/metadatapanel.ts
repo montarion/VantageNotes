@@ -13,10 +13,22 @@ async function getMetadata(filename: string) {
 }
 
 export async function showMetadataPanel(filename: string) {
-  const container = document.querySelector("#metadata-panel-container") as HTMLElement;
-  if (!container) return;
+  const sidebar = document.querySelector(".sidebar");
+  if (!sidebar) {
+    log.error("sidebar element not found");
+    return null;
+  }
+  sidebar.innerHTML = ""
 
-  container.innerHTML = `
+  let panel = sidebar.querySelector(".search-result-panel") as HTMLElement | null;
+  if (!panel) {
+    panel = document.createElement("div")
+    panel.classList.add(".search-result-panel")
+    sidebar.append(panel)
+  }
+  
+
+  panel.innerHTML = `
     <div class="panel">
       <div class="panel-header">Metadata (click to toggle)</div>
       <div class="panel-content" id="metadata-panel">
@@ -27,7 +39,7 @@ export async function showMetadataPanel(filename: string) {
 
   try {
     const metadata = await getMetadata(filename);
-    const content = container.querySelector(".panel-content")!;
+    const content = panel.querySelector(".panel-content")!;
     if (!metadata) {
       content.innerHTML = "<p>No metadata available</p>";
       return;
@@ -35,7 +47,7 @@ export async function showMetadataPanel(filename: string) {
     content.innerHTML = renderMetadata(metadata);
   } catch (e) {
     log.error("Failed to load metadata:", e);
-    const content = container.querySelector(".panel-content")!;
+    const content = panel.querySelector(".panel-content")!;
     content.innerHTML = "<p>Error loading metadata</p>";
   }
 }
@@ -49,44 +61,57 @@ function renderMetadata(metadata: any): string {
        <div class="panel-content">${content}</div>
      </div>`;
 
-     const tags = metadata.tags?.map((t: any) =>
-        `<a href="#" class="cm-tag" data-tag="${escape(t)}">#${escape(t)}</a>`
-      ).join(", ") || "None";
+  const tags = metadata.tags?.map((t: any) =>
+    `<a href="#" class="cm-tag" data-tag="${escape(t)}">#${escape(t)}</a>`
+  ).join(", ") || "None";
 
   const headers = metadata.headers?.map((h: any) =>
     `<a href="#" class="meta-header" data-header="${escape(h.text)}">H${h.level}: ${escape(h.text)}</a>`
   ).join("<br>") || "None";
 
   const tasks = metadata.tasks?.map((t: any) =>
-    `<label class="meta-task"><input type="checkbox" disabled ${t.checked ? "checked" : ""} data-task="${escape(t.text)}"> ${escape(t.text)}</label>`
+    `<label class="meta-task">
+      <input type="checkbox" ${t.checked ? "checked" : ""} data-task="${escape(t.text)}">
+      ${escape(t.text)}
+    </label>`
   ).join("<br>") || "None";
 
   const wikilinks = metadata.wikilinks?.map((w: any) =>
-    `<a href="#" class="cm-wikilink" data-wikilink="${escape(w.target)}">[[${escape(w.target)}${w.alias ? `|${escape(w.alias)}` : ""}]]</a>`
+    `<a href="#" class="cm-wikilink" data-wikilink="${escape(w.target)}">
+      [[${escape(w.target)}${w.alias ? `|${escape(w.alias)}` : ""}]]
+    </a>`
   ).join("<br>") || "None";
 
   const links = metadata.hyperlinks?.map((l: any) =>
-    `<a href="${escape(l.url)}" target="_blank" class="meta-link">${escape(l.label || l.url)}</a>`
+    `<a href="${escape(l.url)}" target="_blank" class="meta-link">
+      ${escape(l.label || l.url)}
+    </a>`
   ).join("<br>") || "None";
 
   const codes = metadata.code_blocks?.map((c: any) =>
-    `<a href="#" class="meta-code" data-code-lang="${escape(c.language || "plain")}">${escape(c.language || "plain")}</a>`
+    `<a href="#" class="meta-code" data-code-lang="${escape(c.language || "plain")}">
+      ${escape(c.language || "plain")}
+    </a>`
   ).join(", ") || "None";
 
   const images = metadata.images?.map((img: any) =>
     `<img src="${escape(img.url)}" alt="${escape(img.alt_text || '')}" style="max-width: 100px">`
   ).join(" ") || "None";
 
-  return `
-    ${section("Tags", tags)}
-    ${section("Headers", headers)}
-    ${section("Tasks", tasks)}
-    ${section("Wikilinks", wikilinks)}
-    ${section("Links", links)}
-    ${section("Languages", codes)}
-    ${section("Images", images)}
-  `;
+   // Helper to include only non-"None" sections
+   const sections = [
+    tags !== "None" ? section("Tags", tags) : "",
+    headers !== "None" ? section("Headers", headers) : "",
+    tasks !== "None" ? section("Tasks", tasks) : "",
+    wikilinks !== "None" ? section("Wikilinks", wikilinks) : "",
+    links !== "None" ? section("Links", links) : "",
+    codes !== "None" ? section("Languages", codes) : "",
+    images !== "None" ? section("Images", images) : "",
+  ];
+
+  return sections.filter(Boolean).join("\n");
 }
+
 
 export async function showTagPanel(tag: string) {
   // Remove existing tag panels if any
@@ -178,7 +203,7 @@ document.addEventListener("click", (e) => {
     if (target.matches("[data-wikilink]")) {
       e.preventDefault();
       const link = target.dataset.wikilink!;
-      openEditorTab(`${link}.md`);
+      openEditorTab({filename:`${link}.md`});
       return;
     }
 
@@ -204,7 +229,7 @@ document.addEventListener("click", (e) => {
     if (target.classList.contains("tag-result-link")) {
       e.preventDefault();
       const fname = target.dataset.filename;
-      if (fname) openEditorTab(fname);
+      if (fname) openEditorTab({filename:fname});
       return;
     }
   }
@@ -219,7 +244,7 @@ function searchWithFilter(filter: { task?: string; header?: string; codeLang?: s
   fetch(`/api/search?${params.toString()}`)
     .then(res => res.json())
     .then(results => {
-      const sidebar = document.getElementById("sidebar");
+      const sidebar = document.querySelector(".sidebar");
       if (!sidebar) return;
 
       // Remove previous refined search panels if any
@@ -240,7 +265,7 @@ function searchWithFilter(filter: { task?: string; header?: string; codeLang?: s
           const div = document.createElement("div");
           div.className = "search-result";
           div.innerHTML = `<a href="#">${r.filename}</a>`;
-          div.onclick = () => openEditorTab(r.filename);
+          div.onclick = () => openEditorTab({filename:r.filename});
           content.appendChild(div);
         });
       }

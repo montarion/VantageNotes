@@ -15,7 +15,7 @@ const tagMatcher = /#(\w+)(?=\s|$)/g;
 
 export const tagPlugin: Extension = ViewPlugin.fromClass(
   class {
-    decorations: DecorationSet;
+    readonly decorations: DecorationSet;
 
     constructor(view: EditorView) {
       this.decorations = this.buildDecorations(view);
@@ -27,7 +27,7 @@ export const tagPlugin: Extension = ViewPlugin.fromClass(
         update.viewportChanged ||
         update.selectionSet
       ) {
-        this.decorations = this.buildDecorations(update.view);
+        this.buildDecorations(update.view);
         metadataStore.updateLineCount(update.view.state.doc.lines);
       }
     }

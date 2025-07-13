@@ -20,7 +20,7 @@ class WikilinkWidget extends WidgetType {
     span.onmousedown = () => {
       console.log(`Navigate to page: ${this.page}`);
       // You can emit an event or use routing here
-      openEditorTab(this.page)
+      openEditorTab({filename: this.page})
     };
     return span;
   }
