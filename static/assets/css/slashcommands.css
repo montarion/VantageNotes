@@ -1,0 +1,9 @@
+.cm-slash-menu {
+    font-family: sans-serif;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  
+  .cm-slash-item:hover {
+    background-color: #f0f0f0;
+  }

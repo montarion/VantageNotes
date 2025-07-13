@@ -21,23 +21,28 @@
     
     <!-- Topbar -->
     <div class="topbar">
+      <button id="navigationToggle">Toggle Navigation</button>
       <input id="search-input" type="text" placeholder="Search..." />
-      <div id="search-results"></div>
+      <button id="sidebarToggle">Toggle Sidebar</button>
+
     </div>
-
+    
     <!-- Layout Grid -->
-    <main class="app-layout">
+    <main>
+        <div class="navigation"></div>
+        <div class="app"></div>
 
-      <!-- Example panes; you can add/remove any panes dynamically 
-      <div class="container" data-pane="pane1">
-        <div class="tab-bar" data-pane="pane1"></div>
-        <div class="tab-content" data-pane="pane1"></div>
-      </div>
-      -->
+          <!-- Example panes; you can add/remove any panes dynamically 
+          <div class="container" data-pane="pane1">
+            <div class="tab-bar" data-pane="pane1"></div>
+            <div class="tab-content" data-pane="pane1"></div>
+          </div>
+          -->
 
       
-
+        <div class="sidebar"></div>
     </main>
+    
 
     <!-- Lua & JS -->
     <script type="application/lua">
