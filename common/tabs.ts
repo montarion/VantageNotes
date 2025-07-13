@@ -24,10 +24,23 @@ type TabCreation = {
   tabId?: string;
   title: string;
   contentEl: HTMLElement;
+
   isEditor?: boolean;
 };
 
+type Pane = {
+  id: string;
+  tabs: Map<string, Tab>;
+  activeTabId: string;
+  tabBarEl: HTMLElement;
+  contentEl: HTMLElement;
+  editorInstance?: ReturnType<typeof newEditor>; // Or whatever your editor type is
+};
+
 const allTabs = new Map<string, Tab>();
+
+const panes = new Map<string, Pane>();
+
 // Map paneId => Map of tabs for that pane
 const tabsByPane = new Map<string, Map<string, Tab>>();
 // Map paneId => active tab id in that pane
@@ -43,7 +56,7 @@ let spinner: HTMLElement | null = null;
 
 export async function initTabs() {
   log.info("Initializing tabs...");
-  GetPane("pane1")
+  GetPane("main")
   // create fallback tab
   //let container = document.createElement("div")
   //container.textContent = "Welcome to the homepage!"
@@ -63,55 +76,60 @@ export async function initTabs() {
  * @param {string} [paneId] Optional pane ID. If omitted, a new unique ID is generated.
  * @returns {string} The ID of the newly created pane.
  */
-export function GetPane(paneId?: string): Map<string, Tab> {
+export function GetPane(paneId?: string): Pane {
   if (!paneId) {
     paneId = `pane_${shortUUID()}`;
   }
-  if (tabsByPane.has(paneId)) {
-    return tabsByPane.get(paneId)!;
+
+  if (panes.has(paneId)) {
+    log.debug("Returning existing pane:", panes.get(paneId))
+    return panes.get(paneId)!;
   }
 
-  // Create container div
   const container = document.createElement("div");
   container.className = "container";
   container.dataset.pane = paneId;
 
-  // Create tab-bar div
   const tabBar = document.createElement("div");
   tabBar.className = "tab-bar";
   tabBar.dataset.pane = paneId;
 
-  // Create tab-content div
   const tabContent = document.createElement("div");
   tabContent.className = "tab-content";
   tabContent.dataset.pane = paneId;
-  tabContent.addEventListener("click", (e) => {
-    let tabcontainer = e.target.closest("[data-id]")
-    let tabId = tabcontainer.dataset.id
-    setCurrentTab(tabId)
-  });
 
-  // Append tabBar and tabContent to container
-  container.append(tabBar);
-  container.append(tabContent);
 
-  // Append container to your main panes wrapper (adjust this selector)
-  const main = document.getElementsByTagName('main')[0]
-  
-  // update ui
+  //const editorContainer = document.createElement("div");
+  //editorContainer.className = "editor";
+  //tabContent.append(editorContainer);
+
+  container.append(tabBar, tabContent);
+  document.querySelector(".app")?.append(container);
+
+
+  const editor = newEditor(tabContent);
+
+  const pane: Pane = {
+    id: paneId,
+    tabs: new Map(),
+    activeTabId: "",
+    tabBarEl: tabBar,
+    contentEl: tabContent,
+    editorInstance: editor,
+  };
+
+
+  panes.set(paneId, pane);
   setupTabBarDragAndDrop(tabBar, paneId);
+  renderTabsUI(paneId)
+  return pane;
+}
 
-  main.append(container);
 
-  // Initialize data structures
-  const paneTabs = new Map<string, Tab>();
-  tabsByPane.set(paneId, paneTabs);
-  tabBars.set(paneId, tabBar);
-  tabContents.set(paneId, tabContent);
 
-  activeTabsByPane.set(paneId, "")
-  log.error(tabsByPane.get(paneId))
-  return tabsByPane.get(paneId)!;
+export function getPaneContent(paneId: string): HTMLElement{
+  let pane = GetPane(paneId)
+  return pane.contentEl//document.querySelector((`.tab-content[data-pane="${paneId}"]`))
 }
 /**
  * Retrieves the tab bar element for a given pane ID, creating it if necessary.
@@ -137,23 +155,41 @@ export function createTab({
   contentEl,
   isEditor = true,
 }: TabCreation): Tab {
-  log.debug(`Creating tab [${tabId}] in pane [${paneId}]`);
+  const pane = GetPane(paneId);
 
-  let paneTabs = GetPane(paneId)
-  
-  if (paneTabs.has(tabId)) {
+  // Don't recreate if tab already exists
+  if (pane.tabs.has(tabId)) {
     switchToTab(paneId, tabId);
-    return paneTabs.get(tabId)!; // Return existing tab
+    return pane.tabs.get(tabId)!;
   }
 
-  const tab: Tab = { id:tabId, title, contentEl, isEditor };
-  // link content to tab with id
-  contentEl.dataset.id = tabId
-  log.debug(`Adding tab[${tabId}] to Alltabs with contentId ${contentEl.dataset.id} and content`, contentEl)
-  allTabs.set(tabId, tab)
-  upsertTab(paneId, tab)
+  // Attach the tab content element to the pane content container
+  const paneContentContainer = getPaneContent(paneId) //document.getElementById(`${paneId}-content`);
+  if (!paneContentContainer) {
+    throw new Error(`Missing content container for pane ${paneId}`);
+  }
+
+  contentEl.dataset.id = tabId;
+  //contentEl.classList.add("tab-content");
+
+  // ⬅️ This ensures the element is in the DOM before CodeMirror initializes
+  //paneContentContainer.appendChild(contentEl);
+  if (!isEditor){
+    paneContentContainer.innerHTML = ""
+    paneContentContainer.append(contentEl)
+  } else {
+    //pane.editorInstance?.setValue(contentEl.textContent)
+  }
+  
+  // Register the tab
+  const tab: Tab = { id: tabId, title, contentEl, isEditor };
+  allTabs.set(tabId, tab);
+  log.debug("list of tabs: ", allTabs)
+  pane.tabs.set(tabId, tab);
 
   renderTabsUI(paneId);
+
+  
 
   return tab;
 }
@@ -186,21 +222,26 @@ export function removeActiveClass(paneId: string){
  * @param {string} tabId - The ID of the tab to switch to.
  */
 export function switchToTab(paneId: string, tabId: string) {
-  const tab = allTabs.get(tabId);
-if (!tab) return;
+  const pane = GetPane(paneId);
+  const tab = pane.tabs.get(tabId);
+  if (!tab) return;
 
-setCurrentTab(tabId)
-// change which button has the active class
-let tabEl = document.querySelector(`.tab[data-id="${tabId}"]`)
-GetPane(paneId)
+  pane.activeTabId = tabId;
 
-activeTabsByPane.set(paneId, tabId)
-updateTabContentDisplay(paneId, tab.contentEl)
-
-removeActiveClass(paneId)
-setActivePane(paneId)
-
-setContent(paneId, getContentWithId(tab.id))
+  if (tab.isEditor && pane.editorInstance) {
+    pane.editorInstance.setValue(tab.contentEl.textContent || "");
+  } else {
+    // For non-editor tabs, show the tab content
+    pane.contentEl.innerHTML = "";
+    pane.contentEl.append(tab.contentEl);
+  }
+  //setContent(paneId, tab.id)
+  setCurrentTab(tab.id)
+  setActivePane(paneId)
+  updateBreadcrumb(tab.title)
+  showMetadataPanel(tab.title)
+  renderTabsUI(paneId);
+  
 }
 
 
@@ -254,72 +295,39 @@ function closeTab(paneId: string, id: string) {
  * @param paneId - The ID of the pane to render tabs for.
  */
 function renderTabsUI(paneId: string) {
-  const paneTabs = GetPane(paneId);
-  const tabBar = GetTabBar(paneId);
-  const activeId = getCurrentTab()?.id
-
-  if (!tabBar) {
-    return;
-  }
-
+  const pane = GetPane(paneId);
+  const tabBar = pane.tabBarEl;
   tabBar.innerHTML = "";
+  log.debug("pane.tabs:", pane.tabs)
+  for (const [tabId, tab] of pane.tabs) {
+    const tabEl = document.createElement("div");
+    tabEl.className = "tab";
+    tabEl.dataset.id = tabId;
 
-  paneTabs.forEach((tab) => {
-    if (!tab) return;
-
-    const { id, title } = tab;
-    const btn = document.createElement("button");
-    btn.className = "tab";
-    btn.textContent = title;
-    btn.dataset.id = id;
-    btn.dataset.pane = paneId;
-    if (id === activeId) btn.classList.add("active");
-
-    btn.draggable = true;
-    btn.addEventListener("click", (e) => {
-      let id = e.target.dataset.id
-      switchToTab(paneId, id);
-    })
-    btn.addEventListener("dragstart", (e) => {
-      e.dataTransfer?.setData("text/plain", id);
-      e.dataTransfer?.setData("text/pane", paneId);
-      e.dataTransfer!.effectAllowed = "move";
-      e.dataTransfer!.setDragImage(btn, 0, 0);
-    });
-
-    btn.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      btn.classList.add("drag-over");
-    });
-
-    btn.addEventListener("dragleave", () => {
-      btn.classList.remove("drag-over");
-    });
-
-    btn.addEventListener("drop", (e) => {
-      e.preventDefault();
-      btn.classList.remove("drag-over");
-      const draggedId = e.dataTransfer?.getData("text/plain");
-      const draggedPane = e.dataTransfer?.getData("text/pane") || paneId;
-      if (!draggedId || draggedId === id) return;
-      reorderTabs(draggedPane, draggedId, paneId, id);
-    });
-
+    const titleSpan = document.createElement("span");
+    titleSpan.textContent = tab.title;
+    titleSpan.className = "tab-title";
+    titleSpan.addEventListener("click", () => switchToTab(paneId, tabId));
     
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "tab-close";
+    closeBtn.innerHTML = "&times;";
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation(); // Prevent tab switching on close
+      closeTab(paneId, tabId); // You can also use closeTab if preferred
+    });
 
-    const closeBtn = document.createElement("span");
-    closeBtn.textContent = "✕";
-    closeBtn.className = "close";
-    closeBtn.onclick = (e) => {
-      e.stopPropagation();
-      //closeTab(paneId, id);
-      removeTab(paneId, tab.id)
-    };
+    tabEl.appendChild(titleSpan);
+    tabEl.appendChild(closeBtn);
 
-    btn.append(closeBtn);
-    tabBar.append(btn);
-  });
+    if (pane.activeTabId === tabId) {
+      tabEl.classList.add("active");
+    }
+
+    tabBar.append(tabEl);
+  }
 }
+
 
 function saveTabs() {
   const toSave: Record<string, { id: string; title: string; isEditor?: boolean }[]> = {};
@@ -409,6 +417,7 @@ function reorderTabs(
   if (draggedTab.contentEl.parentElement === fromContent) {
     fromContent.removeChild(draggedTab.contentEl);
   }
+  console.warn(toContent)
   toContent.appendChild(draggedTab.contentEl);
 
   // Clean up from old tab map
@@ -493,8 +502,10 @@ function upsertTab(paneId: string, tab: Tab) {
 }
 
 function updateTabContentDisplay(paneId: string, tabContent: HTMLElement) {
-  const activeId = activeTabsByPane.get(paneId);
-  const container = document.querySelector(`.tab-content[data-pane="${paneId}"]`)
+  const Pane = GetPane(paneId)
+
+  const activeId = Pane.activeTabId;
+  const container = Pane.contentEl; //document.querySelector(`.tab-content[data-pane="${paneId}"]`)
 
   if (!container || !tabContent) return;
   // log mismatches
@@ -513,11 +524,14 @@ function updateTabContentDisplay(paneId: string, tabContent: HTMLElement) {
   }
   renderTabsUI(paneId)
 }
-export function setContent(paneId: string, content: HTMLElement){
-  // find tab-content element
-  let contentEl = document.querySelector(`.tab-content[data-pane="${paneId}"]`)
-  contentEl.innerHTML = ""
-  contentEl?.append(content)
+export function setContent(paneId: string, tabId:string){
+  let pane = GetPane(paneId)
+  let tab = allTabs.get(tabId)
+  if (tab?.isEditor){
+    pane.editorInstance?.setValue(tab.contentEl.textContent || "")
+  }
+  
+  
 }
 
 function removeTab(paneId: string, tabId: string) {
@@ -639,24 +653,38 @@ export function setupTabBarDragAndDrop(tabBar: HTMLElement, paneId: string) {
  * @param paneId - The pane (left, right, etc.) where the tab should be opened.
  * @param filename - The name of the file to load.
  */
-export async function openEditorTab(paneId: string, filename: string) {
-    GetPane(paneId)
+export async function openEditorTab({paneId, filename}) {
+  if (!paneId){
+    paneId = getActivePane()
+  }
+  const pane = GetPane(paneId);
 
   // Load the file's content
   const content = await loadFile(filename);
-  if (content === null) {
-    return;
-  }
-  let tmp = document.createElement("div")
-  tmp.innerHTML = content
-  let realcontent = await newEditor(content, tmp).dom
-  
-  // Create the tab in the UI
-  const tab = createTab( {paneId:paneId, tabId:shortUUID(4).toString(), title:filename, contentEl:realcontent, isEditor:true});
+  if (content === null) return;
+
+  // Create a container for CodeMirror
+  const contentEl = document.createElement("div");
+  contentEl.style.height = "100%";
+  contentEl.style.width = "100%";
+  contentEl.classList.add("editor-container");
+  contentEl.textContent = content
+
+  // Create the tab in the UI (this appends contentEl to the DOM)
+  const tab = createTab({
+    paneId,
+    tabId: shortUUID(4).toString(),
+    title: filename,
+    contentEl,
+    isEditor: true,
+  });
+
+
+
   // Activate the tab
   switchToTab(paneId, tab.id);
-
 }
+
 
 function fixAllTabs(){
   for (const [tabId, tab] of allTabs.entries()) {

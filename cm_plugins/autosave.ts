@@ -4,6 +4,7 @@ import { showSaveStatus } from "../common/topbar.ts";
 import { Logger } from '../common/logger.ts';
 import { getCurrentTab } from "../common/tabs.ts";
 import { transclusionActiveField } from "./transclusions.ts";
+import { loadFile } from "../common/navigation.ts";
 
 const log = new Logger({ namespace: 'Autosave', minLevel: 'debug' });
 
@@ -18,11 +19,17 @@ function createAutoSavePlugin(saveCallback: (content: string) => void, delay = 1
       }
 
       update(update: ViewUpdate) {
-        log.debug("updating")
         const isTransclusionActive = update.state.field(transclusionActiveField, false);
-        const filename = getCurrentTab().title;
-
-        log.debug(filename)
+        log.debug(Object.keys(localStorage).includes("CurrentTab"))
+        log.debug("current tab", getCurrentTab())
+        if (!Object.keys(localStorage).includes("CurrentTab")){
+          return
+        }
+        const filename = getCurrentTab()?.title;
+        if (!filename){
+          log.warn("no current tab found")
+          return
+        }
         if (isTransclusionActive) {
           log.debug(`⏸️ Autosave skipped for main file '${filename}': transclusion in progress`);
           return;

@@ -7,9 +7,9 @@ const log = new Logger({ namespace: "Search" });
 let resultsList: HTMLElement | null = null;
 
 function ensureSearchResultPanel(): HTMLElement | null {
-  const sidebar = document.getElementById("sidebar");
+  const sidebar = document.querySelector(".navigation");
   if (!sidebar) {
-    log.error("Sidebar element not found");
+    log.error("Navigation element not found");
     return null;
   }
 
@@ -26,7 +26,7 @@ function ensureSearchResultPanel(): HTMLElement | null {
     resultsList.id = "search-results-list";
     panel.appendChild(resultsList);
 
-    sidebar.appendChild(panel);
+    sidebar.prepend(panel);
   } else {
     resultsList = panel.querySelector("#search-results-list")!;
   }
@@ -63,7 +63,7 @@ async function renderSearchResults(results: any[]) {
       `;
   
       div.onclick = () => {
-        openEditorTab("search", result.filename);
+        openEditorTab({paneId:"search", filename:result.filename});
       };
   
       resultsList.appendChild(div);

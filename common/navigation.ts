@@ -1,9 +1,7 @@
-import { newEditor } from "./editor.ts";
-import { createTab, getActivePane, getActiveTab, getCurrentTab, openEditorTab, setActivePane } from "./tabs.ts";
+import { getCurrentTab, openEditorTab } from "./tabs.ts";
 import { showSaveStatus } from "./topbar.ts";
 import { Logger } from './logger.ts';
 import { eventBus } from "./events.ts";
-import { showMetadataPanel } from "./metadatapanel.ts";
 
 const log = new Logger({ namespace: 'Navigation', minLevel: 'debug' });
 
@@ -18,13 +16,16 @@ export async function fetchFileTree(treeEl: HTMLElement = document.createElement
 
 export async function generateNavigation(paneId = "pane1") {
   // Create navigation tab in specified pane
-    createTab({
-      paneId: paneId,
-      tabId: "nav",
-      title: "Navigation",
-      contentEl: await fetchFileTree(),
-      isEditor: false,
-    })
+    //createTab({
+    //  paneId: paneId,
+    //  tabId: "nav",
+    //  title: "Navigation",
+    //  contentEl: await fetchFileTree(),
+    //  isEditor: false,
+    //})
+    let navbar = document.querySelector(".navigation")
+    await fetchFileTree(navbar)
+    //navbar?.append()
   
 }
 
@@ -52,6 +53,7 @@ export async function saveFile(text: string, filename: string | null = null) {
     if (!activeTab) {
       return;
     }
+    log.debug(activeTab)
     filename = activeTab.title;
   }
 
@@ -83,7 +85,7 @@ export function getInitialFileFromURL(): string | null {
 window.addEventListener("popstate", () => {
   const file = getInitialFileFromURL();
   if (file) {
-    openEditorTab("pane2", file);  // Default to main pane here
+    openEditorTab({paneId:"pane2", filename:file});  // Default to main pane here
   }
 });
 
@@ -120,7 +122,7 @@ function renderTree(nodes: any[], container: HTMLElement, parentPath = "") {
       // Remove extension for editor tab ID
       node.filepath = node.filepath.replace(/\.[^.]+$/, "");
 
-      file.onclick = () => openEditorTab(getActivePane(), node.filepath); // open navigation files on left pane by default
+      file.onclick = () => openEditorTab({filename:node.filepath}); // open navigation files on left pane by default
       li.appendChild(file);
     }
 
@@ -137,19 +139,14 @@ export async function createFile({ filename = "nameless", content = "" } = {}) {
   await saveFile(content, filename);
 }
 
-// Example: support creating new file in any pane (default "left")
-export function setupNavigationTab(paneId = "pane2") {
-  document.getElementById("new-file-btn")?.addEventListener("click", async () => {
-    let fileName = prompt("Enter new file name (e.g., note):");
-    if (!fileName) return;
 
-    if (fileName.endsWith(".md")) {
-      fileName = fileName.slice(0, -3);
-    }
 
-    await createFile({ filename: fileName, content: "" });
-    openEditorTab(paneId, fileName);
-    eventBus.emit("refreshFileList");
-    //fetchFileTree();
-  });
+export function toggleNavigation() {
+  const navigation = document.querySelector('.navigation');
+  navigation.style.display = (navigation.style.display === 'none') ? 'block' : 'none';
+}
+
+export function toggleSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  sidebar.style.display = (sidebar.style.display === 'none') ? 'block' : 'none';
 }

@@ -162,10 +162,10 @@ export class TransclusionWidget extends WidgetType {
     const contentEl = document.createElement("div");
     wrapper.appendChild(contentEl);
 
-    if (this.collapsed) {
-      contentEl.textContent = "(collapsed while editing)";
-      return wrapper;
-    }
+    //if (this.collapsed) {
+    //  contentEl.textContent = "(collapsed while editing)";
+    //  return wrapper;
+    //}
 
     loadFile(this.target)
       .then((content) => {
@@ -193,6 +193,7 @@ export class TransclusionWidget extends WidgetType {
             EditorView.updateListener.of(update => {
               if (update.docChanged) {
                 const updatedContent = update.state.doc.toString();
+                log.debug("found it")
                 let filename = getCurrentTab().title
                 saveTransclusion(updatedContent, this.target, filename, log);
             
@@ -241,7 +242,7 @@ export const transclusionPlugin = ViewPlugin.fromClass(
     constructor(view: EditorView) {
       this.view = view;
       this.decorations = this.buildDecorations(view);
-      eventBus.on("fileSaved", this.onRefresh);
+      //eventBus.on("fileSaved", this.onRefresh);
     }
 
     onRefresh = (event: Event) => {

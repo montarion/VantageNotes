@@ -10,10 +10,10 @@ import { Logger } from './logger.ts';
 import {
   keymap, EditorView,
   highlightActiveLine, rectangularSelection,
-  crosshairCursor, lineNumbers, highlightActiveLineGutter,drawSelection,
+  crosshairCursor, lineNumbers,drawSelection,
   dropCursor,
   highlightSpecialChars
-} from "npm:@codemirror/view@6.36.3"
+} from "npm:@codemirror/view"
 
 // Language-related features
 import {
@@ -23,7 +23,7 @@ import {
 
 // Editing history and keymaps
 import {
-  defaultKeymap, history, historyKeymap
+  defaultKeymap, history, historyKeymap, indentWithTab
 } from "npm:@codemirror/commands"
 
 // Search functionality
@@ -62,6 +62,7 @@ import { testHighlightPlugin } from '../cm_plugins/highlight.ts';
 
 // Import tab management functions
 import { getActiveTab, openEditorTab, switchToTab } from "./tabs.ts";
+import { SlashCommandPlugin, slashMenuKeymap } from '../cm_plugins/slashcommands.ts';
 
 const EDITOR_PANE_ID = "main"; // Your main editor pane id
 
@@ -79,6 +80,7 @@ export const outsideExtensions = [
 
 // Main set of editor extensions, plugins and UI features
 export const extensions = [
+  slashMenuKeymap,
   markdown({codeLanguages: languages}),
   tagPlugin,
   headers,
@@ -90,10 +92,15 @@ export const extensions = [
   wikilinkPlugin,
   hyperlinkPlugin,
   transclusionPlugin,
+  SlashCommandPlugin,
+  
   EditorView.theme({
     "&": { height: "100%" }
   }),
-
+  keymap.of([
+    indentWithTab,         // Enable Tab to indent
+    ...defaultKeymap       // All standard shortcuts
+  ]),
   highlightSpecialChars(),
   history(),
   drawSelection(),
@@ -108,62 +115,50 @@ export const extensions = [
   crosshairCursor(),
   highlightActiveLine(),
   highlightSelectionMatches(),
+  lineNumbers(),
   EditorView.lineWrapping,
 ]
 
 // Singleton CodeMirror instance
 let editorView: EditorView | null = null;
 
-/**
- * Creates a new CodeMirror EditorView instance (stateless helper).
- * @param content - Initial text content.
- * @param parent - DOM node to mount editor.
- */
-//export function newEditorView(content: String, parent:Element){
-//  return new EditorView({
-//    doc: content,
-//    extensions: [
-//      ...extensions,
-//      ...outsideExtensions
-//    ],
-//    parent: parent,
-//  });
-//}
-
+type CMEditor = {
+  view: EditorView;
+  setValue: (code: string) => void;
+  getValue: () => string;
+  destroy: () => void;
+};
 /**
  * Creates (or reuses) a CodeMirror editor instance and returns the view object.
- * @param docText - the document text to load into the editor
- * @param targetElement - DOM element to mount the editor into
+ * @param container - DOM element to mount the editor into
  * @returns {EditorView | null}
  */
-export function newEditor(
-  docText: string,
-  targetElement: Element = document.createElement("div")
-): EditorView {
-
-  //if (editorView) {
-  //  editorView.setState(EditorState.create({
-  //    doc: docText,
-  //    extensions: [...extensions, ...outsideExtensions],
-  //  }));
-  //  // Move editor DOM if needed
-  //  if (editorView.dom.parentElement !== targetElement) {
-  //    targetElement.innerHTML = "";
-  //    targetElement.appendChild(editorView.dom);
-  //  }
-  //  return editorView;
-  //}
-  // Create a new editor instance
-  targetElement.innerHTML = "";
-  editorView = new EditorView({
-    state: EditorState.create({
-      doc: docText,
-      extensions: [...extensions, ...outsideExtensions],
-    }),
-    parent: targetElement,
+export function newEditor(container: HTMLElement): CMEditor {
+  const state = EditorState.create({
+    doc: "",
+    extensions: [
+      ...extensions,
+      ...outsideExtensions
+    ],
   });
-  log.debug(editorView)
-  return editorView;
+
+//log.warn("container:", container)
+  const view = new EditorView({
+    state,
+    parent: container,
+  });
+
+
+  return {
+    view,
+    setValue: (docText: string) => {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: docText }
+      });
+    },
+    getValue: () => view.state.doc.toString(),
+    destroy: () => view.destroy(),
+  };
 }
 
 /**
@@ -173,7 +168,7 @@ export function newEditor(
  */
 export async function openActiveEditorTab(filename?: string) {
   if (filename) {
-    await openEditorTab(EDITOR_PANE_ID, filename);
+    await openEditorTab({paneId:EDITOR_PANE_ID, filename});
     return;
   }
 
@@ -181,6 +176,6 @@ export async function openActiveEditorTab(filename?: string) {
   if (activeTab) {
     switchToTab(EDITOR_PANE_ID, activeTab.id);
   } else {
-    await openEditorTab(EDITOR_PANE_ID, "todo");
+    await openEditorTab({paneId:EDITOR_PANE_ID, filename:"todo"});
   }
 }

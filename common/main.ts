@@ -2,7 +2,6 @@ import {
   fetchFileTree,
   generateNavigation, 
   getInitialFileFromURL, 
-  setupNavigationTab 
 } from "./navigation.ts";
 
 import { 
@@ -10,13 +9,10 @@ import {
 } from "./events.ts";
 
 import { 
-  createTab, 
   hasOpenTabs, 
   initTabs, 
   openEditorTab, 
-  setupContainerDragAndDrop, 
-  switchToTab, 
-  getPane,
+  setupContainerDragAndDrop,   
   GetPane
 } from "./tabs.ts";
 
@@ -45,7 +41,7 @@ Logging.enableAll();
 
 
   // Setup drag/drop for content container in main pane
-  //setupContainerDragAndDrop("main");
+  setupContainerDragAndDrop("main");
 
   // Generate navigation pane/tab
   await generateNavigation();
@@ -54,11 +50,11 @@ Logging.enableAll();
   const initialFile = getInitialFileFromURL();
 
   if (initialFile) {
-    await openEditorTab("pane2", initialFile);
-  } else if (!hasOpenTabs("pane2")) {
+    await openEditorTab({paneId:"main", filename:initialFile});
+  } else if (!hasOpenTabs("main")) {
     // Optionally open a default file or welcome tab
-    let newpaneId = shortUUID(4)
+    let newpaneId = "main"
     GetPane(newpaneId)
-    openEditorTab("pane2", "todo"); // or create a default home tab if needed
+    openEditorTab({paneId:"main", filename:"todo"}); // or create a default home tab if needed
   }
 })();
