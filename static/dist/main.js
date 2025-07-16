@@ -329,7 +329,7 @@ function dynamicFacetSlot(addresses, facet, providers) {
   let providerTypes = providers.map((p) => p.type);
   let dynamic = providerAddrs.filter((p) => !(p & 1));
   let idx = addresses[facet.id] >> 1;
-  function get(state) {
+  function get2(state) {
     let values2 = [];
     for (let i = 0; i < providerAddrs.length; i++) {
       let value = getAddr(state, providerAddrs[i]);
@@ -345,13 +345,13 @@ function dynamicFacetSlot(addresses, facet, providers) {
     create(state) {
       for (let addr of providerAddrs)
         ensureAddr(state, addr);
-      state.values[idx] = get(state);
+      state.values[idx] = get2(state);
       return 1;
     },
     update(state, tr) {
       if (!ensureAll(state, dynamic))
         return 0;
-      let value = get(state);
+      let value = get2(state);
       if (facet.compare(value, state.values[idx]))
         return 0;
       state.values[idx] = value;
@@ -364,7 +364,7 @@ function dynamicFacetSlot(addresses, facet, providers) {
         state.values[idx] = oldValue;
         return 0;
       }
-      let value = get(state);
+      let value = get2(state);
       if (facet.compare(value, oldValue)) {
         state.values[idx] = oldValue;
         return 0;
@@ -1954,24 +1954,24 @@ var init_dist = __esm({
       In cases where your value depends only on a single field, you'll
       want to use the [`from`](https://codemirror.net/6/docs/ref/#state.Facet.from) method instead.
       */
-      compute(deps, get) {
+      compute(deps, get2) {
         if (this.isStatic)
           throw new Error("Can't compute a static facet");
-        return new FacetProvider(deps, this, 1, get);
+        return new FacetProvider(deps, this, 1, get2);
       }
       /**
       Create an extension that computes zero or more values for this
       facet from a state.
       */
-      computeN(deps, get) {
+      computeN(deps, get2) {
         if (this.isStatic)
           throw new Error("Can't compute a static facet");
-        return new FacetProvider(deps, this, 2, get);
+        return new FacetProvider(deps, this, 2, get2);
       }
-      from(field, get) {
-        if (!get)
-          get = (x) => x;
-        return this.compute([field], (state) => get(state.field(field)));
+      from(field, get2) {
+        if (!get2)
+          get2 = (x) => x;
+        return this.compute([field], (state) => get2(state.field(field)));
       }
     };
     FacetProvider = class {
@@ -10950,10 +10950,10 @@ var init_dist2 = __esm({
         };
         this.handlers.textformatupdate = (e) => {
           let deco = [];
-          for (let format of e.getTextFormats()) {
-            let lineStyle = format.underlineStyle, thickness = format.underlineThickness;
+          for (let format2 of e.getTextFormats()) {
+            let lineStyle = format2.underlineStyle, thickness = format2.underlineThickness;
             if (lineStyle != "None" && thickness != "None") {
-              let from3 = this.toEditorPos(format.rangeStart), to = this.toEditorPos(format.rangeEnd);
+              let from3 = this.toEditorPos(format2.rangeStart), to = this.toEditorPos(format2.rangeEnd);
               if (from3 < to) {
                 let style2 = `text-decoration: underline ${lineStyle == "Dashed" ? "dashed " : lineStyle == "Squiggle" ? "wavy " : ""}${thickness == "Thin" ? 1 : 2}px`;
                 deco.push(Decoration.mark({ attributes: { style: style2 } }).range(from3, to));
@@ -13684,7 +13684,7 @@ function balanceRange(balanceType, children, positions, from3, to, start2, lengt
   return (mkTop || mkTree)(localChildren, localPositions, length);
 }
 function parseMixed(nest) {
-  return (parse, input, fragments, ranges) => new MixedParse(parse, nest, input, fragments, ranges);
+  return (parse2, input, fragments, ranges) => new MixedParse(parse2, nest, input, fragments, ranges);
 }
 function checkRanges(ranges) {
   if (!ranges.length || ranges.some((r2) => r2.from >= r2.to))
@@ -15085,9 +15085,9 @@ var init_dist3 = __esm({
       Run a full parse, returning the resulting tree.
       */
       parse(input, fragments, ranges) {
-        let parse = this.startParse(input, fragments, ranges);
+        let parse2 = this.startParse(input, fragments, ranges);
         for (; ; ) {
-          let done = parse.advance();
+          let done = parse2.advance();
           if (done)
             return done;
         }
@@ -15111,9 +15111,9 @@ var init_dist3 = __esm({
       }
     };
     InnerParse = class {
-      constructor(parser22, parse, overlay, target, from3) {
+      constructor(parser22, parse2, overlay, target, from3) {
         this.parser = parser22;
-        this.parse = parse;
+        this.parse = parse2;
         this.overlay = overlay;
         this.target = target;
         this.from = from3;
@@ -16218,9 +16218,9 @@ function indentOnInput() {
       if (indent6 == null)
         continue;
       let cur2 = /^\s*/.exec(line2.text)[0];
-      let norm = indentString(state, indent6);
-      if (cur2 != norm)
-        changes.push({ from: line2.from, to: line2.from + cur2.length, insert: norm });
+      let norm2 = indentString(state, indent6);
+      if (cur2 != norm2)
+        changes.push({ from: line2.from, to: line2.from + cur2.length, insert: norm2 });
     }
     return changes.length ? [tr, { changes, sequential: true }] : tr;
   });
@@ -18038,17 +18038,17 @@ function sortOptions(active, state) {
   let conf = state.facet(completionConfig);
   for (let a2 of active)
     if (a2.hasResult()) {
-      let getMatch = a2.result.getMatch;
+      let getMatch2 = a2.result.getMatch;
       if (a2.result.filter === false) {
         for (let option of a2.result.options) {
-          addOption(new Option(option, a2.source, getMatch ? getMatch(option) : [], 1e9 - options.length));
+          addOption(new Option(option, a2.source, getMatch2 ? getMatch2(option) : [], 1e9 - options.length));
         }
       } else {
         let pattern = state.sliceDoc(a2.from, a2.to), match2;
         let matcher = conf.filterStrict ? new StrictMatcher(pattern) : new FuzzyMatcher(pattern);
         for (let option of a2.result.options)
           if (match2 = matcher.match(option.label)) {
-            let matched = !option.displayLabel ? match2.matched : getMatch ? getMatch(option, match2.matched) : [];
+            let matched = !option.displayLabel ? match2.matched : getMatch2 ? getMatch2(option, match2.matched) : [];
             addOption(new Option(option, a2.source, matched, match2.score + (option.boost || 0)));
           }
       }
@@ -20604,9 +20604,9 @@ var init_dist7 = __esm({
             break;
           }
         let leaf = new LeafBlock(this.lineStart + line.pos, line.text.slice(line.pos));
-        for (let parse of this.parser.leafBlockParsers)
-          if (parse) {
-            let parser22 = parse(this, leaf);
+        for (let parse2 of this.parser.leafBlockParsers)
+          if (parse2) {
+            let parser22 = parse2(this, leaf);
             if (parser22)
               leaf.parsers.push(parser22);
           }
@@ -20857,10 +20857,10 @@ var init_dist7 = __esm({
           this.nodeTypes[t2.name] = t2.id;
       }
       createParse(input, fragments, ranges) {
-        let parse = new BlockContext(this, input, fragments, ranges);
+        let parse2 = new BlockContext(this, input, fragments, ranges);
         for (let w of this.wrappers)
-          parse = w(parse, input, fragments, ranges);
-        return parse;
+          parse2 = w(parse2, input, fragments, ranges);
+        return parse2;
       }
       /**
       Reconfigure the parser.
@@ -23189,10 +23189,10 @@ var init_dist8 = __esm({
         this.top = this.topRules[Object.keys(this.topRules)[0]];
       }
       createParse(input, fragments, ranges) {
-        let parse = new Parse2(this, input, fragments, ranges);
+        let parse2 = new Parse2(this, input, fragments, ranges);
         for (let w of this.wrappers)
-          parse = w(parse, input, fragments, ranges);
-        return parse;
+          parse2 = w(parse2, input, fragments, ranges);
+        return parse2;
       }
       /**
       Get a goto table entry @internal
@@ -28685,7 +28685,7 @@ function scanEscape(input) {
   }
   return 0;
 }
-var castOpen, HeredocString, interpolatedStringContent, EscapeSequence, afterInterpolation, automaticSemicolon, eof, abstract, and, array, as, Boolean2, _break2, _case, _catch, clone, _const, _continue2, _default, declare, _do, echo, _else, elseif, enddeclare, endfor, endforeach, endif, endswitch, endwhile, _enum, _extends, final, _finally, fn, _for, foreach, from, _function, global, goto, _if, _implements, include, include_once, _instanceof, insteadof, _interface, list, match, namespace, _new, _null, or, print, _require, require_once, _return2, _switch, _throw, trait, _try, unset, use, _var, Visibility, _while, xor, _yield, keywordMap, castTypes, expression, eofToken, semicolon3, interpolated, phpHighlighting, spec_Name, parser12;
+var castOpen, HeredocString, interpolatedStringContent, EscapeSequence, afterInterpolation, automaticSemicolon, eof, abstract, and, array, as, Boolean, _break2, _case, _catch, clone, _const, _continue2, _default, declare, _do, echo, _else, elseif, enddeclare, endfor, endforeach, endif, endswitch, endwhile, _enum, _extends, final, _finally, fn, _for, foreach, from, _function, global, goto, _if, _implements, include, include_once, _instanceof, insteadof, _interface, list, match, namespace, _new, _null, or, print, _require, require_once, _return2, _switch, _throw, trait, _try, unset, use, _var, Visibility, _while, xor, _yield, keywordMap, castTypes, expression, eofToken, semicolon3, interpolated, phpHighlighting, spec_Name, parser12;
 var init_index_es = __esm({
   "../../.cache/deno/deno_esbuild/@lezer/php@1.0.2/node_modules/@lezer/php/dist/index.es.js"() {
     init_dist8();
@@ -28701,7 +28701,7 @@ var init_index_es = __esm({
     and = 5;
     array = 6;
     as = 7;
-    Boolean2 = 8;
+    Boolean = 8;
     _break2 = 9;
     _case = 10;
     _catch = 11;
@@ -28764,8 +28764,8 @@ var init_index_es = __esm({
       and,
       array,
       as,
-      true: Boolean2,
-      false: Boolean2,
+      true: Boolean,
+      false: Boolean,
       break: _break2,
       case: _case,
       catch: _catch,
@@ -29329,12 +29329,12 @@ var init_dist28 = __esm({
       let quote2 = flags & cx_DoubleQuote ? doubleQuote : singleQuote;
       let long = (flags & cx_Long) > 0;
       let escapes = !(flags & cx_Raw);
-      let format = (flags & cx_Format) > 0;
+      let format2 = (flags & cx_Format) > 0;
       let start2 = input.pos;
       for (; ; ) {
         if (input.next < 0) {
           break;
-        } else if (format && input.next == braceOpen) {
+        } else if (format2 && input.next == braceOpen) {
           if (input.peek(1) == braceOpen) {
             input.advance(2);
           } else {
@@ -44700,7 +44700,7 @@ function mkJavaScript(parserConfig4) {
         return true;
     return false;
   }
-  function register2(varname) {
+  function register3(varname) {
     var state = cx2.state;
     cx2.marked = "def";
     if (state.context) {
@@ -45236,7 +45236,7 @@ function mkJavaScript(parserConfig4) {
       return cont3(pattern);
     }
     if (type8 == "variable") {
-      register2(value);
+      register3(value);
       return cont3();
     }
     if (type8 == "spread")
@@ -45248,7 +45248,7 @@ function mkJavaScript(parserConfig4) {
   }
   function proppattern(type8, value) {
     if (type8 == "variable" && !cx2.stream.match(/^\s*:/, false)) {
-      register2(value);
+      register3(value);
       return cont3(maybeAssign);
     }
     if (type8 == "variable")
@@ -45306,7 +45306,7 @@ function mkJavaScript(parserConfig4) {
       return cont3(functiondef2);
     }
     if (type8 == "variable") {
-      register2(value);
+      register3(value);
       return cont3(functiondef2);
     }
     if (type8 == "(")
@@ -45320,7 +45320,7 @@ function mkJavaScript(parserConfig4) {
       return cont3(functiondecl);
     }
     if (type8 == "variable") {
-      register2(value);
+      register3(value);
       return cont3(functiondecl);
     }
     if (type8 == "(")
@@ -45356,7 +45356,7 @@ function mkJavaScript(parserConfig4) {
   }
   function className2(type8, value) {
     if (type8 == "variable") {
-      register2(value);
+      register3(value);
       return cont3(classNameAfter);
     }
   }
@@ -45441,7 +45441,7 @@ function mkJavaScript(parserConfig4) {
     if (type8 == "{")
       return contCommasep(importSpec, "}");
     if (type8 == "variable")
-      register2(value);
+      register3(value);
     if (value == "*")
       cx2.marked = "keyword";
     return cont3(maybeAs);
@@ -58869,6 +58869,578 @@ var Logger = class {
 };
 var Logging = globalConfig;
 
+// common/transclusion.ts
+var TRANSCLUSION_REGEX = /!\[\[([^\]\|]+)(?:\|([^\]]+))?\]\]/g;
+function parseTransclusions(text4) {
+  const results = [];
+  let match2;
+  while ((match2 = TRANSCLUSION_REGEX.exec(text4)) !== null) {
+    results.push({
+      original: match2[0],
+      target: match2[1].trim(),
+      alias: match2[2]?.trim()
+    });
+  }
+  return results;
+}
+async function fetchTransclusionContent(target) {
+  const res = await fetch(`/notes/${encodeURIComponent(target)}`);
+  if (!res.ok)
+    throw new Error(`Failed to fetch content for ${target}`);
+  return await res.text();
+}
+async function renderTransclusions(text4) {
+  const transclusions = parseTransclusions(text4);
+  let rendered = text4;
+  for (const t2 of transclusions) {
+    try {
+      const content3 = await fetchTransclusionContent(t2.target);
+      t2.content = content3;
+      const replacement = `
+        <span class="transclusion" data-target="${t2.target}">
+          <span class="transclusion-alias">${t2.alias || t2.target}</span>
+          <div class="transclusion-content">${content3}</div>
+        </span>
+      `;
+      const escapedOriginal = t2.original.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+      const replaceRegex = new RegExp(escapedOriginal, "g");
+      rendered = rendered.replace(replaceRegex, replacement);
+    } catch (e) {
+      console.error(`Failed to fetch transclusion for ${t2.target}:`, e);
+      rendered = rendered.replace(t2.original, `<span class="transclusion-error">Failed to load transclusion: ${t2.original}</span>`);
+    }
+  }
+  return rendered;
+}
+
+// common/search.ts
+var log = new Logger({ namespace: "Search" });
+var resultsList = null;
+function ensureSearchResultPanel() {
+  const sidebar = document.querySelector(".navigation");
+  if (!sidebar) {
+    log.error("Navigation element not found");
+    return null;
+  }
+  let panel = sidebar.querySelector(".search-result-panel");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = "search-result-panel";
+    const title = document.createElement("h4");
+    title.textContent = "Search Results";
+    panel.appendChild(title);
+    resultsList = document.createElement("div");
+    resultsList.id = "search-results-list";
+    panel.appendChild(resultsList);
+    sidebar.prepend(panel);
+  } else {
+    resultsList = panel.querySelector("#search-results-list");
+  }
+  return panel;
+}
+async function renderSearchResults(results) {
+  if (!resultsList)
+    return;
+  resultsList.innerHTML = "";
+  if (!results.length) {
+    resultsList.innerHTML = "<p>No results found.</p>";
+    return;
+  }
+  for (const result of results) {
+    const renderedMetadata = result.highlighted_metadata ? await renderTransclusions(result.highlighted_metadata) : "\u2014";
+    const renderedContent = result.highlighted_content ? await renderTransclusions(result.highlighted_content) : "\u2014";
+    const div = document.createElement("div");
+    div.className = "search-result";
+    div.innerHTML = `
+        <div class="filename"><strong>${result.highlighted_filename}</strong></div>
+        <div class="meta-snippet"><em>Meta:</em> ${renderedMetadata}</div>
+        <div class="content-snippet"><em>Text:</em> ${renderedContent}</div>
+      `;
+    div.onclick = () => {
+      openEditorTab({ paneId: "search", filename: result.filename });
+    };
+    resultsList.appendChild(div);
+  }
+}
+function setupSearchHandler() {
+  const input = document.getElementById("search-input");
+  if (!input) {
+    log.error("Search input not found");
+    return;
+  }
+  input.addEventListener("input", async () => {
+    const query = input.value.trim();
+    if (!query) {
+      const existingPanel = document.querySelector(".search-result-panel");
+      if (existingPanel) {
+        existingPanel.remove();
+      }
+      resultsList = null;
+      return;
+    }
+    const panel = ensureSearchResultPanel();
+    if (!panel || !resultsList)
+      return;
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      if (!res.ok) {
+        throw new Error(`Search API error: ${res.statusText}`);
+      }
+      const results = await res.json();
+      await renderSearchResults(results);
+    } catch (err) {
+      log.error("Search failed", err);
+      resultsList.innerHTML = "<p>Error fetching search results.</p>";
+    }
+  });
+}
+
+// common/topbar.ts
+var log2 = new Logger({ namespace: "Topbar" });
+var topbar = document.querySelector(".topbar");
+if (!topbar)
+  throw new Error("Topbar element not found");
+var breadcrumbContainer = document.createElement("nav");
+breadcrumbContainer.className = "breadcrumb";
+var saveStatus = document.createElement("span");
+saveStatus.className = "save-status";
+document.querySelector("#navigationToggle")?.addEventListener("click", function() {
+  log2.debug("CLICKED");
+  toggleNavigation();
+});
+document.querySelector("#sidebarToggle")?.addEventListener("click", function() {
+  toggleSidebar();
+});
+topbar.appendChild(breadcrumbContainer);
+topbar.appendChild(saveStatus);
+setupSearchHandler();
+var saveTimeout = null;
+function updateBreadcrumb(filepath) {
+  breadcrumbContainer.innerHTML = "";
+  const parts = filepath.split("/");
+  parts.forEach((part, index) => {
+    const span = document.createElement("span");
+    span.textContent = part;
+    if (index < parts.length - 1) {
+      span.className = "breadcrumb-folder";
+      span.onclick = () => {
+        const subPath = parts.slice(0, index + 1).join("/");
+        log2.info("Clicked breadcrumb:", subPath);
+      };
+    } else {
+      span.className = "breadcrumb-file";
+    }
+    breadcrumbContainer.appendChild(span);
+    if (index < parts.length - 1) {
+      const separator2 = document.createElement("span");
+      separator2.textContent = " > ";
+      separator2.className = "breadcrumb-separator";
+      breadcrumbContainer.appendChild(separator2);
+    }
+  });
+}
+function showSaveStatus(status) {
+  if (saveTimeout)
+    clearTimeout(saveTimeout);
+  if (status === "saving") {
+    saveStatus.textContent = "Saving...";
+  } else if (status === "saved") {
+    saveStatus.textContent = "Saved \u2713";
+    saveTimeout = window.setTimeout(() => {
+      saveStatus.textContent = "";
+    }, 2e3);
+  } else {
+    saveStatus.textContent = "Unsaved changes";
+  }
+}
+
+// common/metadatapanel.ts
+var log3 = new Logger({ namespace: "Metadata", minLevel: "debug" });
+async function getMetadata(filename) {
+  const response = await loadFile(filename);
+  return extractMetadataFromText(response);
+}
+function extractMetadataFromText(text4) {
+  const wikilinks = [...text4.matchAll(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g)].map((m) => ({
+    target: m[1],
+    alias: m[2] || null
+  }));
+  const headers2 = [...text4.matchAll(/^(#{1,6})\s+(.*)/gm)].map((m) => ({
+    level: m[1].length,
+    text: m[2]
+  }));
+  const tasks = [...text4.matchAll(/^[-*] \[( |x|X)\] (.+)/gm)].map((m) => ({
+    checked: m[1].toLowerCase() === "x",
+    text: m[2]
+  }));
+  const tags3 = [...new Set([...text4.matchAll(/#(\w+)/g)].map((m) => m[1]))];
+  const hyperlinks = [...text4.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)].map((m) => ({
+    label: m[1],
+    url: m[2]
+  }));
+  const code_blocks = [...text4.matchAll(/```(\w+)?\n([\s\S]*?)```/g)].map((m) => ({
+    language: m[1] || "plain",
+    code: m[2]
+  }));
+  const images = [...text4.matchAll(/!\[(.*?)\]\((.*?)\)/g)].map((m) => ({
+    alt_text: m[1],
+    url: m[2]
+  }));
+  return {
+    wikilinks,
+    headers: headers2,
+    tasks,
+    tags: tags3,
+    hyperlinks,
+    code_blocks,
+    images
+  };
+}
+async function showMetadataPanel(filename) {
+  const sidebar = document.querySelector(".sidebar");
+  if (!sidebar) {
+    log3.error("sidebar element not found");
+    return null;
+  }
+  sidebar.innerHTML = "";
+  let panel = sidebar.querySelector(".search-result-panel");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.classList.add(".search-result-panel");
+    sidebar.append(panel);
+  }
+  panel.innerHTML = `
+    <div class="panel">
+      <div class="panel-header">Metadata (click to toggle)</div>
+      <div class="panel-content" id="metadata-panel">
+        <p>Loading metadata...</p>
+      </div>
+    </div>
+  `;
+  try {
+    const metadata = await getMetadata(filename);
+    const content3 = panel.querySelector(".panel-content");
+    if (!metadata) {
+      content3.innerHTML = "<p>No metadata available</p>";
+      return;
+    }
+    content3.innerHTML = "";
+    content3.append(renderMetadata(metadata));
+  } catch (e) {
+    log3.error("Failed to load metadata:", e);
+    const content3 = panel.querySelector(".panel-content");
+    content3.innerHTML = "<p>Error loading metadata</p>";
+  }
+}
+function renderMetadata(metadata) {
+  const escape = (s) => s.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const createSection = (title, children) => {
+    const section2 = document.createElement("div");
+    section2.className = "panel";
+    const header3 = document.createElement("div");
+    header3.className = "panel-header";
+    header3.textContent = `${title} (click to toggle)`;
+    const content3 = document.createElement("div");
+    content3.className = "panel-content";
+    if (children.length === 0) {
+      content3.textContent = "None";
+    } else {
+      for (const child of children) {
+        if (typeof child === "string") {
+          content3.appendChild(document.createTextNode(child));
+        } else {
+          content3.appendChild(child);
+        }
+      }
+    }
+    section2.appendChild(header3);
+    section2.appendChild(content3);
+    return section2;
+  };
+  const renderTags = () => (metadata.tags || []).map((t2, i) => {
+    const tag2 = document.createElement("a");
+    tag2.href = "#";
+    tag2.className = "cm-tag";
+    tag2.dataset.tag = t2;
+    tag2.textContent = `#${t2}`;
+    if (i > 0)
+      return [document.createTextNode(", "), tag2];
+    return [tag2];
+  }).flat();
+  const renderHeaders = () => (metadata.headers || []).map((h) => {
+    const header3 = document.createElement("a");
+    header3.href = "#";
+    header3.className = "meta-header";
+    header3.dataset.header = h.text;
+    header3.textContent = `H${h.level}: ${h.text}`;
+    return [header3, document.createElement("br")];
+  }).flat();
+  const renderTasks = () => (metadata.tasks || []).map((t2) => {
+    const label = document.createElement("label");
+    label.className = "meta-task";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = t2.checked;
+    checkbox.dataset.task = t2.text;
+    label.appendChild(checkbox);
+    label.append(` ${t2.text}`);
+    return [label, document.createElement("br")];
+  }).flat();
+  const renderWikilinks = () => (metadata.wikilinks || []).map((w) => {
+    const link = document.createElement("a");
+    link.href = "#";
+    link.className = "cm-wikilink";
+    link.dataset.wikilink = w.target;
+    link.textContent = `[[${w.target}${w.alias ? `|${w.alias}` : ""}]]`;
+    return [link, document.createElement("br")];
+  }).flat();
+  const renderLinks = () => (metadata.hyperlinks || []).map((l) => {
+    const link = document.createElement("a");
+    link.href = l.url;
+    link.target = "_blank";
+    link.className = "meta-link";
+    link.textContent = l.label || l.url;
+    return [link, document.createElement("br")];
+  }).flat();
+  const renderCodeLanguages = () => (metadata.code_blocks || []).map((c2, i) => {
+    const lang = document.createElement("a");
+    lang.href = "#";
+    lang.className = "meta-code";
+    lang.dataset.codeLang = c2.language || "plain";
+    lang.textContent = c2.language || "plain";
+    if (i > 0)
+      return [document.createTextNode(", "), lang];
+    return [lang];
+  }).flat();
+  const renderImages = () => (metadata.images || []).map((img) => {
+    const image = document.createElement("img");
+    image.src = img.url;
+    image.alt = img.alt_text || "";
+    image.style.maxWidth = "100px";
+    return image;
+  });
+  const container = document.createElement("div");
+  if ((metadata.tags || []).length)
+    container.appendChild(createSection("Tags", renderTags()));
+  if ((metadata.headers || []).length)
+    container.appendChild(createSection("Headers", renderHeaders()));
+  if ((metadata.tasks || []).length)
+    container.appendChild(createSection("Tasks", renderTasks()));
+  if ((metadata.wikilinks || []).length)
+    container.appendChild(createSection("Wikilinks", renderWikilinks()));
+  if ((metadata.hyperlinks || []).length)
+    container.appendChild(createSection("Links", renderLinks()));
+  if ((metadata.code_blocks || []).length)
+    container.appendChild(createSection("Languages", renderCodeLanguages()));
+  if ((metadata.images || []).length)
+    container.appendChild(createSection("Images", renderImages()));
+  return container;
+}
+async function showTagPanel(tag2) {
+  document.querySelectorAll(".search-result-panel[data-type='tag']").forEach((el) => el.remove());
+  const sidebar = document.getElementById("sidebar");
+  if (!sidebar)
+    return;
+  const panel = document.createElement("div");
+  panel.className = "search-result-panel panel";
+  panel.dataset.type = "tag";
+  panel.innerHTML = `
+    <div class="panel-header">Tagged with: #${tag2} (click to toggle)</div>
+    <div class="panel-content">
+      <p>Loading\u2026</p>
+    </div>
+  `;
+  sidebar.appendChild(panel);
+  try {
+    const response = await fetch(`/api/search?tag=${encodeURIComponent(tag2)}`);
+    const results = await response.json();
+    const contentDiv = panel.querySelector(".panel-content");
+    if (!contentDiv)
+      return;
+    if (!results.length) {
+      contentDiv.innerHTML = `<p>No results found.</p>`;
+      return;
+    }
+    contentDiv.innerHTML = `
+      <ul class="tag-search-results">
+        ${results.map((r2) => `
+          <li>
+            <a href="#" class="tag-result-link" data-filename="${r2.filename}">
+              ${r2.highlighted_filename || r2.filename}
+            </a>
+          </li>
+        `).join("")}
+      </ul>
+    `;
+  } catch (e) {
+    console.error("Error loading tag panel:", e);
+    const contentDiv = panel.querySelector(".panel-content");
+    if (contentDiv) {
+      contentDiv.innerHTML = `<p>Error loading tag data.</p>`;
+    }
+  }
+}
+document.addEventListener("click", (e) => {
+  const target = e.target;
+  if (target.classList.contains("panel-header")) {
+    const panel = target.parentElement;
+    if (panel && panel.classList.contains("panel")) {
+      panel.classList.toggle("collapsed");
+      return;
+    }
+  }
+  if (target.closest("#metadata-panel")) {
+    if (target.matches("[data-tag]")) {
+      e.preventDefault();
+      const tag2 = target.dataset.tag;
+      showTagPanel(tag2);
+      return;
+    }
+    if (target.matches("[data-task]")) {
+      e.preventDefault();
+      const task = target.dataset.task;
+      searchWithFilter({ task });
+      return;
+    }
+    if (target.matches("[data-wikilink]")) {
+      e.preventDefault();
+      const link = target.dataset.wikilink;
+      openEditorTab({ filename: `${link}.md` });
+      return;
+    }
+    if (target.matches("[data-header]")) {
+      e.preventDefault();
+      const header3 = target.dataset.header;
+      searchWithFilter({ header: header3 });
+      return;
+    }
+    if (target.matches("[data-code-lang]")) {
+      e.preventDefault();
+      const lang = target.dataset.codeLang;
+      searchWithFilter({ codeLang: lang });
+      return;
+    }
+  }
+  if (target.closest(".search-result-panel[data-type='tag']")) {
+    if (target.classList.contains("tag-result-link")) {
+      e.preventDefault();
+      const fname = target.dataset.filename;
+      if (fname)
+        openEditorTab({ filename: fname });
+      return;
+    }
+  }
+});
+function searchWithFilter(filter2) {
+  const params = new URLSearchParams();
+  if (filter2.task)
+    params.append("task", filter2.task);
+  if (filter2.header)
+    params.append("header", filter2.header);
+  if (filter2.codeLang)
+    params.append("code_lang", filter2.codeLang);
+  fetch(`/api/search?${params.toString()}`).then((res) => res.json()).then((results) => {
+    const sidebar = document.querySelector(".sidebar");
+    if (!sidebar)
+      return;
+    sidebar.querySelectorAll(".search-result-panel[data-type='refined']").forEach((el) => el.remove());
+    const panel = document.createElement("div");
+    panel.className = "search-result-panel panel";
+    panel.dataset.type = "refined";
+    panel.innerHTML = `<div class="panel-header">Refined Search (click to toggle)</div>`;
+    const content3 = document.createElement("div");
+    content3.className = "panel-content";
+    if (!results.length) {
+      content3.innerHTML = `<p>No results found.</p>`;
+    } else {
+      results.forEach((r2) => {
+        const div = document.createElement("div");
+        div.className = "search-result";
+        div.innerHTML = `<a href="#">${r2.filename}</a>`;
+        div.onclick = () => openEditorTab({ filename: r2.filename });
+        content3.appendChild(div);
+      });
+    }
+    panel.appendChild(content3);
+    sidebar.appendChild(panel);
+  });
+}
+
+// common/pluginhelpers.ts
+init_dist2();
+
+// ../../.cache/deno/deno_esbuild/uuid@11.1.0/node_modules/uuid/dist/esm-browser/stringify.js
+var byteToHex = [];
+for (let i = 0; i < 256; ++i) {
+  byteToHex.push((i + 256).toString(16).slice(1));
+}
+function unsafeStringify(arr, offset = 0) {
+  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
+}
+
+// ../../.cache/deno/deno_esbuild/uuid@11.1.0/node_modules/uuid/dist/esm-browser/rng.js
+var getRandomValues;
+var rnds8 = new Uint8Array(16);
+function rng() {
+  if (!getRandomValues) {
+    if (typeof crypto === "undefined" || !crypto.getRandomValues) {
+      throw new Error("crypto.getRandomValues() not supported. See https://github.com/uuidjs/uuid#getrandomvalues-not-supported");
+    }
+    getRandomValues = crypto.getRandomValues.bind(crypto);
+  }
+  return getRandomValues(rnds8);
+}
+
+// ../../.cache/deno/deno_esbuild/uuid@11.1.0/node_modules/uuid/dist/esm-browser/native.js
+var randomUUID = typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID.bind(crypto);
+var native_default = { randomUUID };
+
+// ../../.cache/deno/deno_esbuild/uuid@11.1.0/node_modules/uuid/dist/esm-browser/v4.js
+function v4(options, buf, offset) {
+  if (native_default.randomUUID && !buf && !options) {
+    return native_default.randomUUID();
+  }
+  options = options || {};
+  const rnds = options.random ?? options.rng?.() ?? rng();
+  if (rnds.length < 16) {
+    throw new Error("Random bytes length must be >= 16");
+  }
+  rnds[6] = rnds[6] & 15 | 64;
+  rnds[8] = rnds[8] & 63 | 128;
+  if (buf) {
+    offset = offset || 0;
+    if (offset < 0 || offset + 16 > buf.length) {
+      throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);
+    }
+    for (let i = 0; i < 16; ++i) {
+      buf[offset + i] = rnds[i];
+    }
+    return buf;
+  }
+  return unsafeStringify(rnds);
+}
+var v4_default = v4;
+
+// common/pluginhelpers.ts
+var log4 = new Logger({ namespace: "Pluginhelpers", minLevel: "debug" });
+function isRangeSelected(view, from3, to) {
+  return view.state.selection.ranges.some((range) => {
+    return range.empty && range.from >= from3 && range.from <= to || // cursor inside
+    !range.empty && !(range.to <= from3 || range.from >= to);
+  });
+}
+function shortUUID(length = 4) {
+  return v4_default().replace("-", "").slice(0, length);
+}
+var ZeroWidthWidget = class extends WidgetType {
+  toDOM() {
+    const span = document.createElement("span");
+    span.style.display = "inline-block";
+    span.style.width = "0px";
+    return span;
+  }
+};
+
 // common/editor.ts
 init_dist2();
 init_dist5();
@@ -59812,10 +60384,10 @@ var indentSelection = ({ state, dispatch }) => {
     if (!/\S/.test(line.text))
       indent6 = 0;
     let cur2 = /^\s*/.exec(line.text)[0];
-    let norm = indentString(state, indent6);
-    if (cur2 != norm || range.from < line.from + cur2.length) {
+    let norm2 = indentString(state, indent6);
+    if (cur2 != norm2 || range.from < line.from + cur2.length) {
       updated[line.from] = indent6;
-      changes2.push({ from: line.from, to: line.from + cur2.length, insert: norm });
+      changes2.push({ from: line.from, to: line.from + cur2.length, insert: norm2 });
     }
   });
   if (!changes.changes.empty)
@@ -59981,12 +60553,12 @@ var SearchCursor = class {
       }
       let str = fromCodePoint(next2), start2 = this.bufferStart + this.bufferPos;
       this.bufferPos += codePointSize2(next2);
-      let norm = this.normalize(str);
-      if (norm.length)
+      let norm2 = this.normalize(str);
+      if (norm2.length)
         for (let i = 0, pos = start2; ; i++) {
-          let code2 = norm.charCodeAt(i);
+          let code2 = norm2.charCodeAt(i);
           let match2 = this.match(code2, pos, this.bufferPos + this.bufferStart);
-          if (i == norm.length - 1) {
+          if (i == norm2.length - 1) {
             if (match2) {
               this.value = match2;
               return this;
@@ -61311,7 +61883,7 @@ init_dist2();
 init_dist();
 
 // cm_plugins/metadata.ts
-var log = new Logger({ namespace: "Metadata", minLevel: "debug" });
+var log5 = new Logger({ namespace: "Metadata", minLevel: "debug" });
 var MetadataStore = class {
   tags = [];
   headers = [];
@@ -61397,7 +61969,7 @@ var MetadataStore = class {
 var metadataStore = new MetadataStore();
 
 // cm_plugins/hashtag.ts
-var log2 = new Logger({ namespace: "Hashtag", minLevel: "debug" });
+var log6 = new Logger({ namespace: "Hashtag", minLevel: "debug" });
 var tagMatcher = /#(\w+)(?=\s|$)/g;
 var tagPlugin = ViewPlugin.fromClass(
   class {
@@ -61407,7 +61979,7 @@ var tagPlugin = ViewPlugin.fromClass(
     }
     update(update) {
       if (update.docChanged || update.viewportChanged || update.selectionSet) {
-        this.buildDecorations(update.view);
+        this.decorations = this.buildDecorations(update.view);
         metadataStore.updateLineCount(update.view.state.doc.lines);
       }
     }
@@ -61432,8 +62004,8 @@ var tagPlugin = ViewPlugin.fromClass(
           const cursorInside = main.from >= tagStart3 && main.from <= tagEnd;
           if (cursorInside)
             continue;
-          builder.add(tagStart3, tagEnd, Decoration.mark({ class: "cm-tag" }));
           foundTags.push({ name: tag2, line: line.number, context: line });
+          builder.add(tagStart3, tagEnd, Decoration.mark({ class: "cm-tag" }));
         }
         pos = line.to + 1;
       }
@@ -61449,83 +62021,6 @@ var tagPlugin = ViewPlugin.fromClass(
 // cm_plugins/headers.ts
 init_dist2();
 init_dist();
-
-// common/pluginhelpers.ts
-init_dist2();
-
-// ../../.cache/deno/deno_esbuild/uuid@11.1.0/node_modules/uuid/dist/esm-browser/stringify.js
-var byteToHex = [];
-for (let i = 0; i < 256; ++i) {
-  byteToHex.push((i + 256).toString(16).slice(1));
-}
-function unsafeStringify(arr, offset = 0) {
-  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
-}
-
-// ../../.cache/deno/deno_esbuild/uuid@11.1.0/node_modules/uuid/dist/esm-browser/rng.js
-var getRandomValues;
-var rnds8 = new Uint8Array(16);
-function rng() {
-  if (!getRandomValues) {
-    if (typeof crypto === "undefined" || !crypto.getRandomValues) {
-      throw new Error("crypto.getRandomValues() not supported. See https://github.com/uuidjs/uuid#getrandomvalues-not-supported");
-    }
-    getRandomValues = crypto.getRandomValues.bind(crypto);
-  }
-  return getRandomValues(rnds8);
-}
-
-// ../../.cache/deno/deno_esbuild/uuid@11.1.0/node_modules/uuid/dist/esm-browser/native.js
-var randomUUID = typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID.bind(crypto);
-var native_default = { randomUUID };
-
-// ../../.cache/deno/deno_esbuild/uuid@11.1.0/node_modules/uuid/dist/esm-browser/v4.js
-function v4(options, buf, offset) {
-  if (native_default.randomUUID && !buf && !options) {
-    return native_default.randomUUID();
-  }
-  options = options || {};
-  const rnds = options.random ?? options.rng?.() ?? rng();
-  if (rnds.length < 16) {
-    throw new Error("Random bytes length must be >= 16");
-  }
-  rnds[6] = rnds[6] & 15 | 64;
-  rnds[8] = rnds[8] & 63 | 128;
-  if (buf) {
-    offset = offset || 0;
-    if (offset < 0 || offset + 16 > buf.length) {
-      throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);
-    }
-    for (let i = 0; i < 16; ++i) {
-      buf[offset + i] = rnds[i];
-    }
-    return buf;
-  }
-  return unsafeStringify(rnds);
-}
-var v4_default = v4;
-
-// common/pluginhelpers.ts
-var log3 = new Logger({ namespace: "Pluginhelpers", minLevel: "debug" });
-function isRangeSelected(view, from3, to) {
-  return view.state.selection.ranges.some((range) => {
-    return range.empty && range.from >= from3 && range.from <= to || // cursor inside
-    !range.empty && !(range.to <= from3 || range.from >= to);
-  });
-}
-function shortUUID(length = 4) {
-  return v4_default().replace("-", "").slice(0, length);
-}
-var ZeroWidthWidget = class extends WidgetType {
-  toDOM() {
-    const span = document.createElement("span");
-    span.style.display = "inline-block";
-    span.style.width = "0px";
-    return span;
-  }
-};
-
-// cm_plugins/headers.ts
 var headerMatcher = /^(#{1,6})\s+(.*)$/;
 var headers = ViewPlugin.fromClass(
   class {
@@ -61625,7 +62120,7 @@ init_dist2();
 init_dist();
 
 // common/events.ts
-var log4 = new Logger({ namespace: "Events", minLevel: "debug" });
+var log7 = new Logger({ namespace: "Events", minLevel: "debug" });
 var EventBus = class {
   listeners = {};
   on(event, cb) {
@@ -61640,7 +62135,7 @@ var EventBus = class {
 var eventBus = new EventBus();
 
 // cm_plugins/checklists.ts
-var log5 = new Logger({ namespace: "Checklists", minLevel: "debug" });
+var log8 = new Logger({ namespace: "Checklists", minLevel: "debug" });
 var checklistRegex = /^(\s*)[-*] \[([ xX])\] (.*)$/;
 var CheckboxWidget = class extends WidgetType {
   checked;
@@ -61736,7 +62231,7 @@ var checklistPlugin = ViewPlugin.fromClass(
             const taskText = line.text.substr(6);
             const onToggle = () => {
               const newChar = checked ? " " : "x";
-              log5.debug("UPDATING TOGGLE");
+              log8.debug("UPDATING TOGGLE");
               view.dispatch({
                 changes: {
                   from: checkboxStart + 1,
@@ -61774,7 +62269,7 @@ var checklistPlugin = ViewPlugin.fromClass(
 // cm_plugins/codeblocks.ts
 init_dist2();
 init_dist();
-var log6 = new Logger({ namespace: "Codeblocks", minLevel: "debug" });
+var log9 = new Logger({ namespace: "Codeblocks", minLevel: "debug" });
 function getCodeBlockRanges(doc2) {
   const text4 = doc2.toString();
   const fenceRegex = /^```.*$/gm;
@@ -61936,7 +62431,6 @@ var inlineCodePlugin = ViewPlugin.fromClass(
             end2 - 1,
             Decoration.mark({ class: "cm-inline-code" })
           );
-          console.log(!isRangeSelected(view, start2, end2));
           if (!isRangeSelected(view, start2, end2)) {
             builder.add(end2 - 1, end2, Decoration.replace({}));
           }
@@ -61956,195 +62450,10 @@ var inlineCodePlugin = ViewPlugin.fromClass(
 // cm_plugins/autosave.ts
 init_dist2();
 
-// common/transclusion.ts
-var TRANSCLUSION_REGEX = /!\[\[([^\]\|]+)(?:\|([^\]]+))?\]\]/g;
-function parseTransclusions(text4) {
-  const results = [];
-  let match2;
-  while ((match2 = TRANSCLUSION_REGEX.exec(text4)) !== null) {
-    results.push({
-      original: match2[0],
-      target: match2[1].trim(),
-      alias: match2[2]?.trim()
-    });
-  }
-  return results;
-}
-async function fetchTransclusionContent(target) {
-  const res = await fetch(`/notes/${encodeURIComponent(target)}`);
-  if (!res.ok)
-    throw new Error(`Failed to fetch content for ${target}`);
-  return await res.text();
-}
-async function renderTransclusions(text4) {
-  const transclusions = parseTransclusions(text4);
-  let rendered = text4;
-  for (const t2 of transclusions) {
-    try {
-      const content3 = await fetchTransclusionContent(t2.target);
-      t2.content = content3;
-      const replacement = `
-        <span class="transclusion" data-target="${t2.target}">
-          <span class="transclusion-alias">${t2.alias || t2.target}</span>
-          <div class="transclusion-content">${content3}</div>
-        </span>
-      `;
-      const escapedOriginal = t2.original.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
-      const replaceRegex = new RegExp(escapedOriginal, "g");
-      rendered = rendered.replace(replaceRegex, replacement);
-    } catch (e) {
-      console.warn(`Failed to fetch transclusion for ${t2.target}:`, e);
-      rendered = rendered.replace(t2.original, `<span class="transclusion-error">Failed to load transclusion: ${t2.original}</span>`);
-    }
-  }
-  return rendered;
-}
-
-// common/search.ts
-var log7 = new Logger({ namespace: "Search" });
-var resultsList = null;
-function ensureSearchResultPanel() {
-  const sidebar = document.querySelector(".navigation");
-  if (!sidebar) {
-    log7.error("Navigation element not found");
-    return null;
-  }
-  let panel = sidebar.querySelector(".search-result-panel");
-  if (!panel) {
-    panel = document.createElement("div");
-    panel.className = "search-result-panel";
-    const title = document.createElement("h4");
-    title.textContent = "Search Results";
-    panel.appendChild(title);
-    resultsList = document.createElement("div");
-    resultsList.id = "search-results-list";
-    panel.appendChild(resultsList);
-    sidebar.prepend(panel);
-  } else {
-    resultsList = panel.querySelector("#search-results-list");
-  }
-  return panel;
-}
-async function renderSearchResults(results) {
-  if (!resultsList)
-    return;
-  resultsList.innerHTML = "";
-  if (!results.length) {
-    resultsList.innerHTML = "<p>No results found.</p>";
-    return;
-  }
-  for (const result of results) {
-    const renderedMetadata = result.highlighted_metadata ? await renderTransclusions(result.highlighted_metadata) : "\u2014";
-    const renderedContent = result.highlighted_content ? await renderTransclusions(result.highlighted_content) : "\u2014";
-    const div = document.createElement("div");
-    div.className = "search-result";
-    div.innerHTML = `
-        <div class="filename"><strong>${result.highlighted_filename}</strong></div>
-        <div class="meta-snippet"><em>Meta:</em> ${renderedMetadata}</div>
-        <div class="content-snippet"><em>Text:</em> ${renderedContent}</div>
-      `;
-    div.onclick = () => {
-      openEditorTab({ paneId: "search", filename: result.filename });
-    };
-    resultsList.appendChild(div);
-  }
-}
-function setupSearchHandler() {
-  const input = document.getElementById("search-input");
-  if (!input) {
-    log7.error("Search input not found");
-    return;
-  }
-  input.addEventListener("input", async () => {
-    const query = input.value.trim();
-    if (!query) {
-      const existingPanel = document.querySelector(".search-result-panel");
-      if (existingPanel) {
-        existingPanel.remove();
-      }
-      resultsList = null;
-      return;
-    }
-    const panel = ensureSearchResultPanel();
-    if (!panel || !resultsList)
-      return;
-    try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-      if (!res.ok) {
-        throw new Error(`Search API error: ${res.statusText}`);
-      }
-      const results = await res.json();
-      await renderSearchResults(results);
-    } catch (err) {
-      log7.error("Search failed", err);
-      resultsList.innerHTML = "<p>Error fetching search results.</p>";
-    }
-  });
-}
-
-// common/topbar.ts
-var log8 = new Logger({ namespace: "Topbar" });
-var topbar = document.querySelector(".topbar");
-if (!topbar)
-  throw new Error("Topbar element not found");
-var breadcrumbContainer = document.createElement("nav");
-breadcrumbContainer.className = "breadcrumb";
-var saveStatus = document.createElement("span");
-saveStatus.className = "save-status";
-document.querySelector(".navigationToggle")?.addEventListener("click", function() {
-  log8.debug("CLICKED");
-  toggleNavigation();
-});
-document.querySelector(".sidebarToggle")?.addEventListener("click", function() {
-  toggleSidebar();
-});
-topbar.appendChild(breadcrumbContainer);
-topbar.appendChild(saveStatus);
-setupSearchHandler();
-var saveTimeout = null;
-function updateBreadcrumb(filepath) {
-  breadcrumbContainer.innerHTML = "";
-  const parts = filepath.split("/");
-  parts.forEach((part, index) => {
-    const span = document.createElement("span");
-    span.textContent = part;
-    if (index < parts.length - 1) {
-      span.className = "breadcrumb-folder";
-      span.onclick = () => {
-        const subPath = parts.slice(0, index + 1).join("/");
-        log8.info("Clicked breadcrumb:", subPath);
-      };
-    } else {
-      span.className = "breadcrumb-file";
-    }
-    breadcrumbContainer.appendChild(span);
-    if (index < parts.length - 1) {
-      const separator2 = document.createElement("span");
-      separator2.textContent = " > ";
-      separator2.className = "breadcrumb-separator";
-      breadcrumbContainer.appendChild(separator2);
-    }
-  });
-}
-function showSaveStatus(status) {
-  if (saveTimeout)
-    clearTimeout(saveTimeout);
-  if (status === "saving") {
-    saveStatus.textContent = "Saving...";
-  } else if (status === "saved") {
-    saveStatus.textContent = "Saved \u2713";
-    saveTimeout = window.setTimeout(() => {
-      saveStatus.textContent = "";
-    }, 2e3);
-  } else {
-    saveStatus.textContent = "Unsaved changes";
-  }
-}
-
 // cm_plugins/transclusions.ts
 init_dist2();
 init_dist();
-var log9 = new Logger({ namespace: "Transclusions", minLevel: "debug" });
+var log10 = new Logger({ namespace: "Transclusions", minLevel: "debug" });
 var transclusionRegex = /!\[\[([^\]#|]+)(#([^\]|]+))?(?:\|([^\]]+))?\]\]/g;
 var setTransclusionActive = StateEffect.define();
 var transclusionActiveField = StateField.define({
@@ -62267,9 +62576,9 @@ var TransclusionWidget = class extends WidgetType {
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               const updatedContent = update.state.doc.toString();
-              log9.debug("found it");
-              let filename = getCurrentTab().title;
-              saveTransclusion(updatedContent, this.target, filename, log9);
+              log10.debug("found it");
+              let filename = getActiveTab().title;
+              saveTransclusion(updatedContent, this.target, filename, log10);
               this.setActiveTransclusion(true);
               if (this.clearTimeoutId !== null) {
                 clearTimeout(this.clearTimeoutId);
@@ -62307,7 +62616,7 @@ var transclusionPlugin = ViewPlugin.fromClass(
       this.decorations = this.buildDecorations(view);
     }
     onRefresh = (event) => {
-      if (getCurrentTab()?.title === event.filename) {
+      if (getActiveTab()?.title === event.filename) {
         this.decorations = this.buildDecorations(this.view);
       }
     };
@@ -62379,7 +62688,7 @@ var transclusionPlugin = ViewPlugin.fromClass(
 );
 
 // cm_plugins/autosave.ts
-var log10 = new Logger({ namespace: "Autosave", minLevel: "debug" });
+var log11 = new Logger({ namespace: "Autosave", minLevel: "debug" });
 function createAutoSavePlugin(saveCallback, delay = 1e3) {
   return ViewPlugin.fromClass(
     class {
@@ -62390,27 +62699,23 @@ function createAutoSavePlugin(saveCallback, delay = 1e3) {
       }
       update(update) {
         const isTransclusionActive = update.state.field(transclusionActiveField, false);
-        log10.debug(Object.keys(localStorage).includes("CurrentTab"));
-        log10.debug("current tab", getCurrentTab());
-        if (!Object.keys(localStorage).includes("CurrentTab")) {
+        if (!Object.keys(localStorage).includes("ActiveTab")) {
           return;
         }
-        const filename = getCurrentTab()?.title;
+        const filename = getActiveTab()?.title;
         if (!filename) {
-          log10.warn("no current tab found");
+          log11.warn("no current tab found");
           return;
         }
         if (isTransclusionActive) {
-          log10.debug(`\u23F8\uFE0F Autosave skipped for main file '${filename}': transclusion in progress`);
+          log11.debug(`\u23F8\uFE0F Autosave skipped for main file '${filename}': transclusion in progress`);
           return;
         }
         if (update.docChanged) {
-          log10.info(`\u{1F525} AUTOSAVE triggered for main file: '${filename}'`);
           if (this.timeout)
             clearTimeout(this.timeout);
           showSaveStatus("unsaved");
           this.timeout = window.setTimeout(() => {
-            log10.info(`\u{1F4BE} Saving main file '${filename}' after ${delay}ms delay`);
             saveCallback(update.state.doc.toString());
             this.timeout = null;
           }, delay);
@@ -62427,21 +62732,40 @@ function createAutoSavePlugin(saveCallback, delay = 1e3) {
 // cm_plugins/wikilinks.ts
 init_dist2();
 init_dist();
+var log12 = new Logger({ namespace: "wikilinks", minLevel: "debug" });
 var wikilinkRegex = /\[\[([^\]|#]+(?:#[^\]|]+)?)(?:\|([^\]]+))?\]\]/g;
+var brokenLinks = /* @__PURE__ */ new Set();
+var checkedLinks = /* @__PURE__ */ new Set();
+async function checkWikilinksExistence(view, links) {
+  const toCheck = links.filter((link) => !checkedLinks.has(link));
+  for (const link of toCheck) {
+    checkedLinks.add(link);
+    let res = await loadFile(link);
+    if (res.length > 0) {
+      brokenLinks.delete(link);
+    } else {
+      log12.debug("result", res);
+      brokenLinks.add(link);
+    }
+  }
+  requestIdleCallback(() => {
+    view.dispatch({ effects: [] });
+  });
+}
 var WikilinkWidget = class extends WidgetType {
-  constructor(page, display) {
+  constructor(page, display, broken) {
     super();
     this.page = page;
     this.display = display;
+    this.broken = broken;
   }
   toDOM() {
     const span = document.createElement("span");
-    span.className = "cm-wikilink";
+    span.className = this.broken ? "cm-wikilink cm-wikilink-broken" : "cm-wikilink";
     span.textContent = this.display;
-    span.style.color = "#2a5db0";
+    span.style.color = this.broken ? "red" : "#2a5db0";
     span.style.cursor = "pointer";
     span.onmousedown = () => {
-      console.log(`Navigate to page: ${this.page}`);
       openEditorTab({ filename: this.page });
     };
     return span;
@@ -62465,6 +62789,7 @@ var wikilinkPlugin = ViewPlugin.fromClass(
       const builder = new RangeSetBuilder();
       const { doc: doc2 } = view.state;
       const foundWikilinks = [];
+      const seenPages = /* @__PURE__ */ new Set();
       for (const { from: from3, to } of view.visibleRanges) {
         let pos = from3;
         while (pos <= to) {
@@ -62475,28 +62800,30 @@ var wikilinkPlugin = ViewPlugin.fromClass(
             const end2 = start2 + match2[0].length;
             const page = match2[1];
             const display = match2[2] || page;
+            const isBroken = brokenLinks.has(page);
+            seenPages.add(page);
             if (isRangeSelected(view, start2, end2)) {
-              builder.add(start2, end2, Decoration.mark({ class: "cm-wikilink" }));
+              builder.add(start2, end2, Decoration.mark({ class: isBroken ? "cm-wikilink-broken" : "cm-wikilink" }));
             } else {
               builder.add(
                 start2,
                 end2,
                 Decoration.replace({
-                  widget: new WikilinkWidget(page, display),
+                  widget: new WikilinkWidget(page, display, isBroken),
                   inclusive: false
                 })
               );
             }
-            let wikiobj = { target: page, line: line.number, context: line.text };
-            if (display !== page) {
-              wikiobj["alias"] = display;
-            }
+            const wikiobj = { target: page, line: line.number, context: line.text };
+            if (display !== page)
+              wikiobj.alias = display;
             foundWikilinks.push(wikiobj);
           }
           pos = line.to + 1;
         }
       }
       metadataStore.updateWikilinks(foundWikilinks);
+      checkWikilinksExistence(view, [...seenPages]);
       return builder.finish();
     }
   },
@@ -62508,7 +62835,7 @@ var wikilinkPlugin = ViewPlugin.fromClass(
 // cm_plugins/hyperlinks.ts
 init_dist2();
 init_dist();
-var log11 = new Logger({ namespace: "hyperlinks", minLevel: "debug" });
+var log13 = new Logger({ namespace: "hyperlinks", minLevel: "debug" });
 var markdownLinkRegex = /(?<!\!)\[([^\]]+)\]\(([^)]+)\)/g;
 var imageLinkRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
 var rawUrlRegex = /\bhttps?:\/\/[^\s<>()]+\b/g;
@@ -62678,7 +63005,7 @@ var hyperlinkPlugin = ViewPlugin.fromClass(
 
 // cm_plugins/slashcommands.ts
 init_dist2();
-var log12 = new Logger({ namespace: "Slashcommands", minLevel: "debug" });
+var log14 = new Logger({ namespace: "Slashcommands", minLevel: "debug" });
 var SlashCommandPlugin = ViewPlugin.fromClass(class {
   constructor(view) {
     this.view = view;
@@ -62690,8 +63017,10 @@ var SlashCommandPlugin = ViewPlugin.fromClass(class {
   slashCommands = [
     { name: "tag", label: "Insert a tag", insert: "#tag" },
     { name: "todo", label: "Insert a to-do", insert: "- [ ] " },
-    { name: "date", label: "Insert today\u2019s date", insert: `[[Dailies/${this.formatDateDMY(/* @__PURE__ */ new Date())}]]` },
-    { name: "toggle task", label: "Toggle the current task", run: this.toggleCurrentTask }
+    { name: "today", label: "Insert today\u2019s date", insert: `[[Dailies/${this.currentDate(/* @__PURE__ */ new Date())}]]` },
+    { name: "time", label: "Insert current time", insert: `${this.currentTime()}` },
+    { name: "toggle task", label: "Toggle the current task", run: this.toggleCurrentTask },
+    { name: "warning", label: "Insert warning callout", insert: "> **warning** Warning\n> " }
   ];
   selectedIndex = 0;
   menuItems = [];
@@ -62716,7 +63045,13 @@ var SlashCommandPlugin = ViewPlugin.fromClass(class {
       });
     }
   }
-  formatDateDMY(date) {
+  currentTime() {
+    const date = /* @__PURE__ */ new Date();
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+  currentDate(date) {
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
@@ -62803,7 +63138,7 @@ var SlashCommandPlugin = ViewPlugin.fromClass(class {
     const [fullMatch, prefix2, check, suffix2, rest] = checkboxMatch;
     const toggle = check === " " ? "x" : " ";
     const newLine = `${prefix2}${toggle}${suffix2}${rest}`;
-    log12.warn(newLine);
+    log14.warn(newLine);
     dispatch({
       changes: {
         from: line.from,
@@ -62854,7 +63189,9 @@ var slashMenuKeymap = keymap.of([
       if (!plugin || !plugin.menuItems.length)
         return false;
       return plugin.selectItem(plugin.selectedIndex);
-    }
+    },
+    preventDefault: true
+    // <--- prevents default newline behavior
   },
   {
     key: "Escape",
@@ -62867,13 +63204,34 @@ var slashMenuKeymap = keymap.of([
   }
 ]);
 
+// cm_plugins/autocomplete.ts
+var log15 = new Logger({ namespace: "Autocomplete", minLevel: "debug" });
+function fileLinkCompletions(context) {
+  const match2 = context.matchBefore(/\[\[([^\]]*)$/);
+  if (!match2)
+    return null;
+  const query = match2.text.slice(2);
+  const results = searchFuse(query);
+  const options = results.map((result) => ({
+    label: result.item.replace(".md", ""),
+    type: "file"
+  }));
+  return {
+    from: match2.from + 2,
+    // position after `[[`
+    options,
+    validFor: /^[^\]]*$/
+  };
+}
+
 // common/editor.ts
-var log13 = new Logger({ namespace: "Editor", minLevel: "debug" });
+var log16 = new Logger({ namespace: "Editor", minLevel: "debug" });
 var outsideExtensions = [
   transclusionActiveField,
   createAutoSavePlugin(saveFile, 500)
 ];
 var extensions = [
+  SlashCommandPlugin,
   slashMenuKeymap,
   markdown({ codeLanguages: languages }),
   tagPlugin,
@@ -62886,7 +63244,7 @@ var extensions = [
   wikilinkPlugin,
   hyperlinkPlugin,
   transclusionPlugin,
-  SlashCommandPlugin,
+  autocompletion({ override: [fileLinkCompletions], activateOnTyping: true }),
   EditorView.theme({
     "&": { height: "100%" }
   }),
@@ -62937,265 +63295,30 @@ function newEditor(container) {
   };
 }
 
-// common/metadatapanel.ts
-var log14 = new Logger({ namespace: "Metadata", minLevel: "debug" });
-async function getMetadata(filename) {
-  const response = await fetch(`/api/metadata/${encodeURIComponent(filename)}`);
-  if (!response.ok) {
-    log14.warn(`No metadata found for ${filename}`);
-    return null;
-  }
-  return await response.json();
-}
-async function showMetadataPanel(filename) {
-  const sidebar = document.querySelector(".sidebar");
-  if (!sidebar) {
-    log14.error("sidebar element not found");
-    return null;
-  }
-  sidebar.innerHTML = "";
-  let panel = sidebar.querySelector(".search-result-panel");
-  if (!panel) {
-    panel = document.createElement("div");
-    panel.classList.add(".search-result-panel");
-    sidebar.append(panel);
-  }
-  panel.innerHTML = `
-    <div class="panel">
-      <div class="panel-header">Metadata (click to toggle)</div>
-      <div class="panel-content" id="metadata-panel">
-        <p>Loading metadata...</p>
-      </div>
-    </div>
-  `;
-  try {
-    const metadata = await getMetadata(filename);
-    const content3 = panel.querySelector(".panel-content");
-    if (!metadata) {
-      content3.innerHTML = "<p>No metadata available</p>";
-      return;
-    }
-    content3.innerHTML = renderMetadata(metadata);
-  } catch (e) {
-    log14.error("Failed to load metadata:", e);
-    const content3 = panel.querySelector(".panel-content");
-    content3.innerHTML = "<p>Error loading metadata</p>";
-  }
-}
-function renderMetadata(metadata) {
-  const escape = (s) => s.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const section2 = (title, content3) => `<div class="panel">
-       <div class="panel-header">${title} (click to toggle)</div>
-       <div class="panel-content">${content3}</div>
-     </div>`;
-  const tags3 = metadata.tags?.map(
-    (t2) => `<a href="#" class="cm-tag" data-tag="${escape(t2)}">#${escape(t2)}</a>`
-  ).join(", ") || "None";
-  const headers2 = metadata.headers?.map(
-    (h) => `<a href="#" class="meta-header" data-header="${escape(h.text)}">H${h.level}: ${escape(h.text)}</a>`
-  ).join("<br>") || "None";
-  const tasks = metadata.tasks?.map(
-    (t2) => `<label class="meta-task">
-      <input type="checkbox" ${t2.checked ? "checked" : ""} data-task="${escape(t2.text)}">
-      ${escape(t2.text)}
-    </label>`
-  ).join("<br>") || "None";
-  const wikilinks = metadata.wikilinks?.map(
-    (w) => `<a href="#" class="cm-wikilink" data-wikilink="${escape(w.target)}">
-      [[${escape(w.target)}${w.alias ? `|${escape(w.alias)}` : ""}]]
-    </a>`
-  ).join("<br>") || "None";
-  const links = metadata.hyperlinks?.map(
-    (l) => `<a href="${escape(l.url)}" target="_blank" class="meta-link">
-      ${escape(l.label || l.url)}
-    </a>`
-  ).join("<br>") || "None";
-  const codes = metadata.code_blocks?.map(
-    (c2) => `<a href="#" class="meta-code" data-code-lang="${escape(c2.language || "plain")}">
-      ${escape(c2.language || "plain")}
-    </a>`
-  ).join(", ") || "None";
-  const images = metadata.images?.map(
-    (img) => `<img src="${escape(img.url)}" alt="${escape(img.alt_text || "")}" style="max-width: 100px">`
-  ).join(" ") || "None";
-  const sections = [
-    tags3 !== "None" ? section2("Tags", tags3) : "",
-    headers2 !== "None" ? section2("Headers", headers2) : "",
-    tasks !== "None" ? section2("Tasks", tasks) : "",
-    wikilinks !== "None" ? section2("Wikilinks", wikilinks) : "",
-    links !== "None" ? section2("Links", links) : "",
-    codes !== "None" ? section2("Languages", codes) : "",
-    images !== "None" ? section2("Images", images) : ""
-  ];
-  return sections.filter(Boolean).join("\n");
-}
-async function showTagPanel(tag2) {
-  document.querySelectorAll(".search-result-panel[data-type='tag']").forEach((el) => el.remove());
-  const sidebar = document.getElementById("sidebar");
-  if (!sidebar)
-    return;
-  const panel = document.createElement("div");
-  panel.className = "search-result-panel panel";
-  panel.dataset.type = "tag";
-  panel.innerHTML = `
-    <div class="panel-header">Tagged with: #${tag2} (click to toggle)</div>
-    <div class="panel-content">
-      <p>Loading\u2026</p>
-    </div>
-  `;
-  sidebar.appendChild(panel);
-  try {
-    const response = await fetch(`/api/search?tag=${encodeURIComponent(tag2)}`);
-    const results = await response.json();
-    const contentDiv = panel.querySelector(".panel-content");
-    if (!contentDiv)
-      return;
-    if (!results.length) {
-      contentDiv.innerHTML = `<p>No results found.</p>`;
-      return;
-    }
-    contentDiv.innerHTML = `
-      <ul class="tag-search-results">
-        ${results.map((r2) => `
-          <li>
-            <a href="#" class="tag-result-link" data-filename="${r2.filename}">
-              ${r2.highlighted_filename || r2.filename}
-            </a>
-          </li>
-        `).join("")}
-      </ul>
-    `;
-  } catch (e) {
-    console.error("Error loading tag panel:", e);
-    const contentDiv = panel.querySelector(".panel-content");
-    if (contentDiv) {
-      contentDiv.innerHTML = `<p>Error loading tag data.</p>`;
-    }
-  }
-}
-document.addEventListener("click", (e) => {
-  const target = e.target;
-  if (target.classList.contains("panel-header")) {
-    const panel = target.parentElement;
-    if (panel && panel.classList.contains("panel")) {
-      panel.classList.toggle("collapsed");
-      return;
-    }
-  }
-  if (target.closest("#metadata-panel")) {
-    if (target.matches("[data-tag]")) {
-      e.preventDefault();
-      const tag2 = target.dataset.tag;
-      showTagPanel(tag2);
-      return;
-    }
-    if (target.matches("[data-task]")) {
-      e.preventDefault();
-      const task = target.dataset.task;
-      searchWithFilter({ task });
-      return;
-    }
-    if (target.matches("[data-wikilink]")) {
-      e.preventDefault();
-      const link = target.dataset.wikilink;
-      openEditorTab({ filename: `${link}.md` });
-      return;
-    }
-    if (target.matches("[data-header]")) {
-      e.preventDefault();
-      const header3 = target.dataset.header;
-      searchWithFilter({ header: header3 });
-      return;
-    }
-    if (target.matches("[data-code-lang]")) {
-      e.preventDefault();
-      const lang = target.dataset.codeLang;
-      searchWithFilter({ codeLang: lang });
-      return;
-    }
-  }
-  if (target.closest(".search-result-panel[data-type='tag']")) {
-    if (target.classList.contains("tag-result-link")) {
-      e.preventDefault();
-      const fname = target.dataset.filename;
-      if (fname)
-        openEditorTab({ filename: fname });
-      return;
-    }
-  }
-});
-function searchWithFilter(filter2) {
-  const params = new URLSearchParams();
-  if (filter2.task)
-    params.append("task", filter2.task);
-  if (filter2.header)
-    params.append("header", filter2.header);
-  if (filter2.codeLang)
-    params.append("code_lang", filter2.codeLang);
-  fetch(`/api/search?${params.toString()}`).then((res) => res.json()).then((results) => {
-    const sidebar = document.querySelector(".sidebar");
-    if (!sidebar)
-      return;
-    sidebar.querySelectorAll(".search-result-panel[data-type='refined']").forEach((el) => el.remove());
-    const panel = document.createElement("div");
-    panel.className = "search-result-panel panel";
-    panel.dataset.type = "refined";
-    panel.innerHTML = `<div class="panel-header">Refined Search (click to toggle)</div>`;
-    const content3 = document.createElement("div");
-    content3.className = "panel-content";
-    if (!results.length) {
-      content3.innerHTML = `<p>No results found.</p>`;
-    } else {
-      results.forEach((r2) => {
-        const div = document.createElement("div");
-        div.className = "search-result";
-        div.innerHTML = `<a href="#">${r2.filename}</a>`;
-        div.onclick = () => openEditorTab({ filename: r2.filename });
-        content3.appendChild(div);
-      });
-    }
-    panel.appendChild(content3);
-    sidebar.appendChild(panel);
-  });
-}
-
-// common/tabs.ts
-var log15 = new Logger({ namespace: "Tabs", minLevel: "debug" });
-var STORAGE_KEY = "openTabs";
-var STORAGE_ACTIVE = "activeTab";
-var allTabs = /* @__PURE__ */ new Map();
+// common/pane.ts
+var log17 = new Logger({ namespace: "Pane", minLevel: "debug" });
 var panes = /* @__PURE__ */ new Map();
-var tabsByPane = /* @__PURE__ */ new Map();
-var activeTabsByPane = /* @__PURE__ */ new Map();
-var tabContents = /* @__PURE__ */ new Map();
-var tabContentsByPane = /* @__PURE__ */ new Map();
-var tabBars = /* @__PURE__ */ new Map();
-var contentContainers = /* @__PURE__ */ new Map();
-async function initTabs() {
-  log15.info("Initializing tabs...");
-  GetPane("main");
-}
+var allDragZones = /* @__PURE__ */ new Set();
 function GetPane(paneId) {
   if (!paneId) {
     paneId = `pane_${shortUUID()}`;
   }
   if (panes.has(paneId)) {
-    log15.debug("Returning existing pane:", panes.get(paneId));
     return panes.get(paneId);
   }
-  const container = document.createElement("div");
-  container.className = "container";
-  container.dataset.pane = paneId;
+  const paneEl = document.createElement("div");
+  paneEl.className = "pane";
+  paneEl.dataset.pane = paneId;
   const tabBar = document.createElement("div");
   tabBar.className = "tab-bar";
   tabBar.dataset.pane = paneId;
   const tabContent = document.createElement("div");
   tabContent.className = "tab-content";
   tabContent.dataset.pane = paneId;
-  container.append(tabBar, tabContent);
-  document.querySelector(".app")?.append(container);
+  paneEl.append(tabBar, tabContent);
+  document.querySelector(".app")?.append(paneEl);
   const editor = newEditor(tabContent);
-  const pane = {
+  const paneObj = {
     id: paneId,
     tabs: /* @__PURE__ */ new Map(),
     activeTabId: "",
@@ -63203,14 +63326,151 @@ function GetPane(paneId) {
     contentEl: tabContent,
     editorInstance: editor
   };
-  panes.set(paneId, pane);
-  setupTabBarDragAndDrop(tabBar, paneId);
+  panes.set(paneId, paneObj);
+  registerPaneZones(paneEl, paneObj.id);
+  setupDragAndDrop(tabBar, paneId);
   renderTabsUI(paneId);
-  return pane;
+  return paneObj;
 }
 function getPaneContent(paneId) {
   let pane = GetPane(paneId);
   return pane.contentEl;
+}
+function getActivePane() {
+  let id3 = localStorage.getItem("CurrentPane");
+  return id3;
+}
+function setActivePane(paneId) {
+  localStorage.setItem("CurrentPane", paneId);
+  document.querySelectorAll(".pane").forEach((el) => {
+    el.classList.remove("active");
+  });
+  document.querySelector(`.pane[data-pane="${paneId}"]`)?.classList.add("active");
+}
+function removePane(paneId) {
+  const pane = panes.get(paneId);
+  if (!pane) {
+    log17.warn(`No pane found with ID ${paneId}`);
+    return;
+  }
+  const el = document.querySelector(`.pane[data-pane="${paneId}"]`);
+  if (el) {
+    el.remove();
+    log17.debug(`Removed pane DOM element for ${paneId}`);
+  } else {
+    log17.warn(`Could not find pane DOM element for ${paneId}`);
+  }
+  for (const zone of Array.from(allDragZones)) {
+    if (zone.dataset.paneId === paneId) {
+      zone.remove();
+      allDragZones.delete(zone);
+    }
+  }
+  panes.delete(paneId);
+  const remainingPaneIds = [...panes.keys()];
+  if (getActivePane() === paneId) {
+    if (remainingPaneIds.length > 0) {
+      setActivePane(remainingPaneIds[0]);
+    } else {
+      localStorage.removeItem("CurrentPane");
+    }
+  }
+  if (remainingPaneIds.length === 0) {
+    const newPane = GetPane();
+    setActivePane(newPane.id);
+    log17.debug(`All panes removed \u2014 created new pane: ${newPane.id}`);
+  }
+  log17.debug(`Pane ${paneId} fully removed.`);
+}
+function setupPaneDragZones(paneEl, paneId) {
+  if (paneEl.querySelector(".drag-zone"))
+    return;
+  const sides = ["right"];
+  log17.debug("Setting up pane drag zones!");
+  const zones = [];
+  for (const side of sides) {
+    const zone = document.createElement("div");
+    zone.classList.add("drag-zone", `drag-zone-${side}`);
+    zone.dataset.paneId = paneId;
+    zone.dataset.side = side;
+    zone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      zone.classList.add("drag-zone-hover");
+    });
+    zone.addEventListener("dragleave", () => {
+      zone.classList.remove("drag-zone-hover");
+    });
+    zone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zone.classList.remove("drag-zone-hover");
+      const data2 = e.dataTransfer?.getData("text/plain");
+      log17.warn(`Dropped tab!`, data2);
+      if (!data2)
+        return;
+      const { tabId, fromPane } = JSON.parse(data2);
+      const side2 = zone.dataset.side;
+      const toPane = GetPane().id;
+      handleTabDropToNewPane(fromPane, tabId, toPane);
+    });
+    paneEl.appendChild(zone);
+    zones.push(zone);
+  }
+  return zones;
+}
+function handleTabDropToNewPane(fromPaneId, tabId, toPaneId) {
+  log17.debug("INSIDE HANDLETABDROPTONEWPANE");
+  const fromPane = GetPane(fromPaneId);
+  if (fromPaneId === toPaneId && fromPane.tabs.has(tabId))
+    return;
+  const toPane = GetPane(toPaneId);
+  const newPane = toPane;
+  log17.debug("Tabs in old pane before removal", Array.from(fromPane.tabs.keys()));
+  const tab3 = fromPane.tabs.get(tabId);
+  if (tab3) {
+    fromPane.tabs.delete(tabId);
+    newPane.tabs.set(tabId, tab3);
+    newPane.activeTabId = tabId;
+    switchToTab(newPane.id, tabId);
+  }
+  log17.debug("Tabs in old pane after removal", Array.from(fromPane.tabs.keys()));
+  const remainingTabs = Array.from(fromPane.tabs.keys());
+  if (remainingTabs.length > 0) {
+    renderTabsUI(fromPaneId);
+  } else {
+    removePane(fromPane.id);
+  }
+  renderTabsUI(newPane.id);
+}
+function registerPaneZones(paneEl, paneId) {
+  const zones = setupPaneDragZones(paneEl, paneId);
+  zones.forEach((zone) => allDragZones.add(zone));
+}
+document.addEventListener("dragstart", () => {
+  allDragZones.forEach((zone) => {
+    zone.style.display = "block";
+  });
+});
+document.addEventListener("dragend", () => {
+  allDragZones.forEach((zone) => {
+    zone.style.display = "none";
+    zone.classList.remove("drag-zone-hover");
+  });
+});
+document.addEventListener("drop", () => {
+  allDragZones.forEach((zone) => {
+    zone.style.display = "none";
+    zone.classList.remove("drag-zone-hover");
+  });
+});
+
+// common/tabs.ts
+var log18 = new Logger({ namespace: "Tabs", minLevel: "debug" });
+var STORAGE_ACTIVE = "ActiveTab";
+var allTabs = /* @__PURE__ */ new Map();
+var tabContentsByPane = /* @__PURE__ */ new Map();
+async function initTabs() {
+  log18.info("Initializing tabs...");
+  GetPane("main");
 }
 function createTab({
   paneId = "pane2",
@@ -63221,7 +63481,7 @@ function createTab({
 }) {
   const pane = GetPane(paneId);
   if (pane.tabs.has(tabId)) {
-    switchToTab2(paneId, tabId);
+    switchToTab(paneId, tabId);
     return pane.tabs.get(tabId);
   }
   const paneContentContainer = getPaneContent(paneId);
@@ -63236,12 +63496,12 @@ function createTab({
   }
   const tab3 = { id: tabId, title, contentEl, isEditor };
   allTabs.set(tabId, tab3);
-  log15.debug("list of tabs: ", allTabs);
+  log18.debug("list of tabs: ", allTabs);
   pane.tabs.set(tabId, tab3);
   renderTabsUI(paneId);
   return tab3;
 }
-function switchToTab2(paneId, tabId) {
+function switchToTab(paneId, tabId) {
   const pane = GetPane(paneId);
   const tab3 = pane.tabs.get(tabId);
   if (!tab3)
@@ -63253,54 +63513,85 @@ function switchToTab2(paneId, tabId) {
     pane.contentEl.innerHTML = "";
     pane.contentEl.append(tab3.contentEl);
   }
-  setCurrentTab(tab3.id);
+  setActiveTab(tab3.id);
   setActivePane(paneId);
   updateBreadcrumb(tab3.title);
   showMetadataPanel(tab3.title);
   renderTabsUI(paneId);
 }
-function closeTab(paneId, id3) {
-  const paneTabs = tabsByPane.get(paneId);
-  const tabBar = tabBars.get(paneId);
-  const contentContainer = contentContainers.get(paneId);
-  if (!paneTabs || !tabBar || !contentContainer)
+function closeTab(paneId, tabId) {
+  log18.debug("inside closetab");
+  const pane = GetPane(paneId);
+  const tabBar = pane.tabBarEl;
+  const paneTabs = pane.tabs;
+  const contentContainer = pane.contentEl;
+  log18.debug("tabBar", tabBar);
+  log18.debug("panetabs", paneTabs);
+  log18.debug("allTabs:", allTabs);
+  if (!paneTabs || !allTabs || !tabBar)
     return;
-  if (!paneTabs.has(id3))
-    return;
-  paneTabs.delete(id3);
-  const paneContents = tabContentsByPane.get(paneId);
-  if (paneContents) {
-    paneContents.delete(id3);
+  paneTabs?.delete(tabId);
+  allTabs.delete(tabId);
+  log18.debug("Removing tab: ", tabId);
+  const tabButton = tabBar.querySelector(`[data-tab-id="${tabId}"]`);
+  if (tabButton)
+    tabButton.remove();
+  const wasActive = pane.activeTabId === tabId;
+  if (wasActive) {
+    pane.editorInstance?.setValue("[new tab menu]");
+    const remainingTabs = Array.from(paneTabs.keys());
+    if (remainingTabs.length > 0) {
+      const newActiveId = remainingTabs[remainingTabs.length - 1];
+      switchToTab(paneId, newActiveId);
+      renderTabsUI(paneId);
+    } else {
+      removePane(paneId);
+    }
+  } else {
+    const remainingTabs = Array.from(paneTabs.keys());
+    if (remainingTabs.length > 0) {
+      renderTabsUI(paneId);
+    } else {
+      removePane(paneId);
+    }
   }
-  tabContents.delete(id3);
-  if (activeTabsByPane.get(paneId) === id3) {
-    contentContainer.innerHTML = "";
-    activeTabsByPane.delete(paneId);
-  }
-  const tabButton = tabBar.querySelector(`[data-tab-id="${id3}"]`);
-  if (tabButton) {
-    tabBar.removeChild(tabButton);
-  }
-  renderTabsUI(paneId);
 }
 function renderTabsUI(paneId) {
   const pane = GetPane(paneId);
-  const tabBar = pane.tabBarEl;
+  let tabBar = pane.tabBarEl;
   tabBar.innerHTML = "";
-  log15.debug("pane.tabs:", pane.tabs);
+  log18.debug("pane.tabs:", pane.tabs);
   for (const [tabId, tab3] of pane.tabs) {
     const tabEl = document.createElement("div");
     tabEl.className = "tab";
     tabEl.dataset.id = tabId;
+    tabEl.draggable = true;
+    tabEl.addEventListener("dragstart", (e) => {
+      e.dataTransfer?.setData("text/plain", JSON.stringify({
+        tabId,
+        fromPane: paneId
+      }));
+      e.dataTransfer?.setDragImage(tabEl, 0, 0);
+    });
+    tabEl.addEventListener("dragover", (e) => {
+      e.preventDefault();
+    });
+    tabEl.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const data2 = e.dataTransfer?.getData("text/plain");
+      if (!data2)
+        return;
+      const { tabId: draggedId, fromPane } = JSON.parse(data2);
+      reorderTabs(fromPane, draggedId, paneId, tabId);
+    });
     const titleSpan = document.createElement("span");
     titleSpan.textContent = tab3.title;
     titleSpan.className = "tab-title";
-    titleSpan.addEventListener("click", () => switchToTab2(paneId, tabId));
+    titleSpan.addEventListener("click", () => switchToTab(paneId, tabId));
     const closeBtn = document.createElement("button");
     closeBtn.className = "tab-close";
     closeBtn.innerHTML = "&times;";
-    closeBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
+    closeBtn.addEventListener("mousedown", (e) => {
       closeTab(paneId, tabId);
     });
     tabEl.appendChild(titleSpan);
@@ -63312,20 +63603,7 @@ function renderTabsUI(paneId) {
   }
 }
 function saveTabs() {
-  const toSave = {};
-  tabsByPane.forEach((paneTabs, paneId) => {
-    toSave[paneId] = Array.from(paneTabs.values()).map(({ id: id3, title, isEditor }) => ({
-      id: id3,
-      title,
-      isEditor
-    }));
-  });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-  const activeSave = {};
-  activeTabsByPane.forEach((activeId, paneId) => {
-    activeSave[paneId] = activeId;
-  });
-  localStorage.setItem(STORAGE_ACTIVE, JSON.stringify(activeSave));
+  log18.debug("trying to save tabs!");
 }
 function reorderTabs(fromPane, draggedId, toPane, targetId) {
   if (draggedId === targetId && fromPane === toPane)
@@ -63344,7 +63622,6 @@ function reorderTabs(fromPane, draggedId, toPane, targetId) {
   if (draggedTab.contentEl.parentElement === fromContent) {
     fromContent.removeChild(draggedTab.contentEl);
   }
-  console.warn(toContent);
   toContent.appendChild(draggedTab.contentEl);
   fromTabs.delete(draggedId);
   const newTabs = /* @__PURE__ */ new Map();
@@ -63376,56 +63653,51 @@ function hasOpenTabs(paneId) {
   const paneTabs = tabsByPane.get(paneId);
   return !!paneTabs && paneTabs.size > 0;
 }
-function setActivePane(paneId) {
-  localStorage.setItem("CurrentPane", paneId);
+function getActiveTab() {
+  return allTabs.get(localStorage.getItem(STORAGE_ACTIVE)) || null;
 }
-function getActivePane() {
-  let id3 = localStorage.getItem("CurrentPane");
-  return id3;
-}
-function setCurrentTab(id3) {
-  localStorage.setItem("CurrentTab", id3);
-  let tab3 = getCurrentTab();
+function setActiveTab(id3) {
+  localStorage.setItem(STORAGE_ACTIVE, id3);
+  let tab3 = allTabs.get(id3);
   history.pushState({}, "", "/" + encodeURI(tab3?.title ?? ""));
   const filename = tab3?.title ?? "Untitled Note";
   document.title = `${filename} \u2013 VantageNotes`;
 }
-function getCurrentTab() {
-  let id3 = localStorage.getItem("CurrentTab");
-  return allTabs.get(id3);
-}
-function setupContainerDragAndDrop(paneId) {
-  const container = contentContainers.get(paneId);
-  if (!container)
-    return;
-  container.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    container.classList.add("drag-over");
+function setupDragAndDrop(tabBar, paneId) {
+  tabBar.querySelectorAll(".tab").forEach((tabEl) => {
+    const tabId = tabEl.getAttribute("data-id");
+    if (!tabId)
+      return;
+    tabEl.setAttribute("draggable", "true");
+    tabEl.addEventListener("dragstart", (e) => {
+      e.dataTransfer?.setData(
+        "application/json",
+        JSON.stringify({ tabId, fromPane: paneId })
+      );
+      e.dataTransfer.effectAllowed = "move";
+    });
   });
-  container.addEventListener("dragleave", () => {
-    container.classList.remove("drag-over");
-  });
-  container.addEventListener("drop", (e) => {
-    e.preventDefault();
-    container.classList.remove("drag-over");
-  });
-}
-function setupTabBarDragAndDrop(tabBar, paneId) {
   tabBar.addEventListener("dragover", (e) => {
     e.preventDefault();
     tabBar.classList.add("drag-over");
+    e.dataTransfer.dropEffect = "move";
   });
-  tabBar.addEventListener("dragleave", () => {
+  tabBar.addEventListener("dragleave", (e) => {
+    e.preventDefault();
     tabBar.classList.remove("drag-over");
   });
   tabBar.addEventListener("drop", (e) => {
-    e.preventDefault();
     tabBar.classList.remove("drag-over");
-    const draggedId = e.dataTransfer?.getData("text/plain");
-    const fromPane = e.dataTransfer?.getData("text/pane");
-    if (!draggedId || !fromPane)
+    log18.warn("DROPPED TAB ON TABBAR");
+    e.preventDefault();
+    const data2 = e.dataTransfer?.getData("text/plain");
+    log18.warn("tabdata:", data2);
+    if (!data2)
       return;
-    reorderTabs(fromPane, draggedId, paneId, null);
+    const { tabId: draggedId, fromPane } = JSON.parse(data2);
+    const targetTab = e.target.closest(".tab");
+    const targetId = targetTab?.dataset.id || null;
+    handleTabDropToNewPane(fromPane, draggedId, paneId);
   });
 }
 async function openEditorTab({ paneId, filename }) {
@@ -63434,13 +63706,11 @@ async function openEditorTab({ paneId, filename }) {
   }
   const pane = GetPane(paneId);
   const content3 = await loadFile(filename);
-  if (content3 === null)
-    return;
   const contentEl = document.createElement("div");
   contentEl.style.height = "100%";
   contentEl.style.width = "100%";
   contentEl.classList.add("editor-container");
-  contentEl.textContent = content3;
+  contentEl.textContent = content3 || "";
   const tab3 = createTab({
     paneId,
     tabId: shortUUID(4).toString(),
@@ -63448,36 +63718,1389 @@ async function openEditorTab({ paneId, filename }) {
     contentEl,
     isEditor: true
   });
-  switchToTab2(paneId, tab3.id);
+  switchToTab(paneId, tab3.id);
+}
+
+// ../../.cache/deno/deno_esbuild/fuse.js@7.1.0/node_modules/fuse.js/dist/fuse.mjs
+function isArray(value) {
+  return !Array.isArray ? getTag(value) === "[object Array]" : Array.isArray(value);
+}
+var INFINITY = 1 / 0;
+function baseToString(value) {
+  if (typeof value == "string") {
+    return value;
+  }
+  let result = value + "";
+  return result == "0" && 1 / value == -INFINITY ? "-0" : result;
+}
+function toString(value) {
+  return value == null ? "" : baseToString(value);
+}
+function isString(value) {
+  return typeof value === "string";
+}
+function isNumber3(value) {
+  return typeof value === "number";
+}
+function isBoolean(value) {
+  return value === true || value === false || isObjectLike(value) && getTag(value) == "[object Boolean]";
+}
+function isObject(value) {
+  return typeof value === "object";
+}
+function isObjectLike(value) {
+  return isObject(value) && value !== null;
+}
+function isDefined(value) {
+  return value !== void 0 && value !== null;
+}
+function isBlank(value) {
+  return !value.trim().length;
+}
+function getTag(value) {
+  return value == null ? value === void 0 ? "[object Undefined]" : "[object Null]" : Object.prototype.toString.call(value);
+}
+var INCORRECT_INDEX_TYPE = "Incorrect 'index' type";
+var LOGICAL_SEARCH_INVALID_QUERY_FOR_KEY = (key) => `Invalid value for key ${key}`;
+var PATTERN_LENGTH_TOO_LARGE = (max) => `Pattern length exceeds max of ${max}.`;
+var MISSING_KEY_PROPERTY = (name2) => `Missing ${name2} property in key`;
+var INVALID_KEY_WEIGHT_VALUE = (key) => `Property 'weight' in key '${key}' must be a positive integer`;
+var hasOwn = Object.prototype.hasOwnProperty;
+var KeyStore = class {
+  constructor(keys2) {
+    this._keys = [];
+    this._keyMap = {};
+    let totalWeight = 0;
+    keys2.forEach((key) => {
+      let obj = createKey(key);
+      this._keys.push(obj);
+      this._keyMap[obj.id] = obj;
+      totalWeight += obj.weight;
+    });
+    this._keys.forEach((key) => {
+      key.weight /= totalWeight;
+    });
+  }
+  get(keyId) {
+    return this._keyMap[keyId];
+  }
+  keys() {
+    return this._keys;
+  }
+  toJSON() {
+    return JSON.stringify(this._keys);
+  }
+};
+function createKey(key) {
+  let path = null;
+  let id3 = null;
+  let src = null;
+  let weight = 1;
+  let getFn = null;
+  if (isString(key) || isArray(key)) {
+    src = key;
+    path = createKeyPath(key);
+    id3 = createKeyId(key);
+  } else {
+    if (!hasOwn.call(key, "name")) {
+      throw new Error(MISSING_KEY_PROPERTY("name"));
+    }
+    const name2 = key.name;
+    src = name2;
+    if (hasOwn.call(key, "weight")) {
+      weight = key.weight;
+      if (weight <= 0) {
+        throw new Error(INVALID_KEY_WEIGHT_VALUE(name2));
+      }
+    }
+    path = createKeyPath(name2);
+    id3 = createKeyId(name2);
+    getFn = key.getFn;
+  }
+  return { path, id: id3, weight, src, getFn };
+}
+function createKeyPath(key) {
+  return isArray(key) ? key : key.split(".");
+}
+function createKeyId(key) {
+  return isArray(key) ? key.join(".") : key;
+}
+function get(obj, path) {
+  let list2 = [];
+  let arr = false;
+  const deepGet = (obj2, path2, index) => {
+    if (!isDefined(obj2)) {
+      return;
+    }
+    if (!path2[index]) {
+      list2.push(obj2);
+    } else {
+      let key = path2[index];
+      const value = obj2[key];
+      if (!isDefined(value)) {
+        return;
+      }
+      if (index === path2.length - 1 && (isString(value) || isNumber3(value) || isBoolean(value))) {
+        list2.push(toString(value));
+      } else if (isArray(value)) {
+        arr = true;
+        for (let i = 0, len = value.length; i < len; i += 1) {
+          deepGet(value[i], path2, index + 1);
+        }
+      } else if (path2.length) {
+        deepGet(value, path2, index + 1);
+      }
+    }
+  };
+  deepGet(obj, isString(path) ? path.split(".") : path, 0);
+  return arr ? list2 : list2[0];
+}
+var MatchOptions = {
+  // Whether the matches should be included in the result set. When `true`, each record in the result
+  // set will include the indices of the matched characters.
+  // These can consequently be used for highlighting purposes.
+  includeMatches: false,
+  // When `true`, the matching function will continue to the end of a search pattern even if
+  // a perfect match has already been located in the string.
+  findAllMatches: false,
+  // Minimum number of characters that must be matched before a result is considered a match
+  minMatchCharLength: 1
+};
+var BasicOptions = {
+  // When `true`, the algorithm continues searching to the end of the input even if a perfect
+  // match is found before the end of the same input.
+  isCaseSensitive: false,
+  // When `true`, the algorithm will ignore diacritics (accents) in comparisons
+  ignoreDiacritics: false,
+  // When true, the matching function will continue to the end of a search pattern even if
+  includeScore: false,
+  // List of properties that will be searched. This also supports nested properties.
+  keys: [],
+  // Whether to sort the result list, by score
+  shouldSort: true,
+  // Default sort function: sort by ascending score, ascending index
+  sortFn: (a2, b) => a2.score === b.score ? a2.idx < b.idx ? -1 : 1 : a2.score < b.score ? -1 : 1
+};
+var FuzzyOptions = {
+  // Approximately where in the text is the pattern expected to be found?
+  location: 0,
+  // At what point does the match algorithm give up. A threshold of '0.0' requires a perfect match
+  // (of both letters and location), a threshold of '1.0' would match anything.
+  threshold: 0.6,
+  // Determines how close the match must be to the fuzzy location (specified above).
+  // An exact letter match which is 'distance' characters away from the fuzzy location
+  // would score as a complete mismatch. A distance of '0' requires the match be at
+  // the exact location specified, a threshold of '1000' would require a perfect match
+  // to be within 800 characters of the fuzzy location to be found using a 0.8 threshold.
+  distance: 100
+};
+var AdvancedOptions = {
+  // When `true`, it enables the use of unix-like search commands
+  useExtendedSearch: false,
+  // The get function to use when fetching an object's properties.
+  // The default will search nested paths *ie foo.bar.baz*
+  getFn: get,
+  // When `true`, search will ignore `location` and `distance`, so it won't matter
+  // where in the string the pattern appears.
+  // More info: https://fusejs.io/concepts/scoring-theory.html#fuzziness-score
+  ignoreLocation: false,
+  // When `true`, the calculation for the relevance score (used for sorting) will
+  // ignore the field-length norm.
+  // More info: https://fusejs.io/concepts/scoring-theory.html#field-length-norm
+  ignoreFieldNorm: false,
+  // The weight to determine how much field length norm effects scoring.
+  fieldNormWeight: 1
+};
+var Config = {
+  ...BasicOptions,
+  ...MatchOptions,
+  ...FuzzyOptions,
+  ...AdvancedOptions
+};
+var SPACE = /[^ ]+/g;
+function norm(weight = 1, mantissa = 3) {
+  const cache4 = /* @__PURE__ */ new Map();
+  const m = Math.pow(10, mantissa);
+  return {
+    get(value) {
+      const numTokens = value.match(SPACE).length;
+      if (cache4.has(numTokens)) {
+        return cache4.get(numTokens);
+      }
+      const norm2 = 1 / Math.pow(numTokens, 0.5 * weight);
+      const n = parseFloat(Math.round(norm2 * m) / m);
+      cache4.set(numTokens, n);
+      return n;
+    },
+    clear() {
+      cache4.clear();
+    }
+  };
+}
+var FuseIndex = class {
+  constructor({
+    getFn = Config.getFn,
+    fieldNormWeight = Config.fieldNormWeight
+  } = {}) {
+    this.norm = norm(fieldNormWeight, 3);
+    this.getFn = getFn;
+    this.isCreated = false;
+    this.setIndexRecords();
+  }
+  setSources(docs = []) {
+    this.docs = docs;
+  }
+  setIndexRecords(records = []) {
+    this.records = records;
+  }
+  setKeys(keys2 = []) {
+    this.keys = keys2;
+    this._keysMap = {};
+    keys2.forEach((key, idx) => {
+      this._keysMap[key.id] = idx;
+    });
+  }
+  create() {
+    if (this.isCreated || !this.docs.length) {
+      return;
+    }
+    this.isCreated = true;
+    if (isString(this.docs[0])) {
+      this.docs.forEach((doc2, docIndex) => {
+        this._addString(doc2, docIndex);
+      });
+    } else {
+      this.docs.forEach((doc2, docIndex) => {
+        this._addObject(doc2, docIndex);
+      });
+    }
+    this.norm.clear();
+  }
+  // Adds a doc to the end of the index
+  add(doc2) {
+    const idx = this.size();
+    if (isString(doc2)) {
+      this._addString(doc2, idx);
+    } else {
+      this._addObject(doc2, idx);
+    }
+  }
+  // Removes the doc at the specified index of the index
+  removeAt(idx) {
+    this.records.splice(idx, 1);
+    for (let i = idx, len = this.size(); i < len; i += 1) {
+      this.records[i].i -= 1;
+    }
+  }
+  getValueForItemAtKeyId(item, keyId) {
+    return item[this._keysMap[keyId]];
+  }
+  size() {
+    return this.records.length;
+  }
+  _addString(doc2, docIndex) {
+    if (!isDefined(doc2) || isBlank(doc2)) {
+      return;
+    }
+    let record = {
+      v: doc2,
+      i: docIndex,
+      n: this.norm.get(doc2)
+    };
+    this.records.push(record);
+  }
+  _addObject(doc2, docIndex) {
+    let record = { i: docIndex, $: {} };
+    this.keys.forEach((key, keyIndex) => {
+      let value = key.getFn ? key.getFn(doc2) : this.getFn(doc2, key.path);
+      if (!isDefined(value)) {
+        return;
+      }
+      if (isArray(value)) {
+        let subRecords = [];
+        const stack = [{ nestedArrIndex: -1, value }];
+        while (stack.length) {
+          const { nestedArrIndex, value: value2 } = stack.pop();
+          if (!isDefined(value2)) {
+            continue;
+          }
+          if (isString(value2) && !isBlank(value2)) {
+            let subRecord = {
+              v: value2,
+              i: nestedArrIndex,
+              n: this.norm.get(value2)
+            };
+            subRecords.push(subRecord);
+          } else if (isArray(value2)) {
+            value2.forEach((item, k) => {
+              stack.push({
+                nestedArrIndex: k,
+                value: item
+              });
+            });
+          } else
+            ;
+        }
+        record.$[keyIndex] = subRecords;
+      } else if (isString(value) && !isBlank(value)) {
+        let subRecord = {
+          v: value,
+          n: this.norm.get(value)
+        };
+        record.$[keyIndex] = subRecord;
+      }
+    });
+    this.records.push(record);
+  }
+  toJSON() {
+    return {
+      keys: this.keys,
+      records: this.records
+    };
+  }
+};
+function createIndex(keys2, docs, { getFn = Config.getFn, fieldNormWeight = Config.fieldNormWeight } = {}) {
+  const myIndex = new FuseIndex({ getFn, fieldNormWeight });
+  myIndex.setKeys(keys2.map(createKey));
+  myIndex.setSources(docs);
+  myIndex.create();
+  return myIndex;
+}
+function parseIndex(data2, { getFn = Config.getFn, fieldNormWeight = Config.fieldNormWeight } = {}) {
+  const { keys: keys2, records } = data2;
+  const myIndex = new FuseIndex({ getFn, fieldNormWeight });
+  myIndex.setKeys(keys2);
+  myIndex.setIndexRecords(records);
+  return myIndex;
+}
+function computeScore$1(pattern, {
+  errors = 0,
+  currentLocation = 0,
+  expectedLocation = 0,
+  distance = Config.distance,
+  ignoreLocation = Config.ignoreLocation
+} = {}) {
+  const accuracy = errors / pattern.length;
+  if (ignoreLocation) {
+    return accuracy;
+  }
+  const proximity = Math.abs(expectedLocation - currentLocation);
+  if (!distance) {
+    return proximity ? 1 : accuracy;
+  }
+  return accuracy + proximity / distance;
+}
+function convertMaskToIndices(matchmask = [], minMatchCharLength = Config.minMatchCharLength) {
+  let indices = [];
+  let start2 = -1;
+  let end2 = -1;
+  let i = 0;
+  for (let len = matchmask.length; i < len; i += 1) {
+    let match2 = matchmask[i];
+    if (match2 && start2 === -1) {
+      start2 = i;
+    } else if (!match2 && start2 !== -1) {
+      end2 = i - 1;
+      if (end2 - start2 + 1 >= minMatchCharLength) {
+        indices.push([start2, end2]);
+      }
+      start2 = -1;
+    }
+  }
+  if (matchmask[i - 1] && i - start2 >= minMatchCharLength) {
+    indices.push([start2, i - 1]);
+  }
+  return indices;
+}
+var MAX_BITS = 32;
+function search(text4, pattern, patternAlphabet, {
+  location = Config.location,
+  distance = Config.distance,
+  threshold = Config.threshold,
+  findAllMatches = Config.findAllMatches,
+  minMatchCharLength = Config.minMatchCharLength,
+  includeMatches = Config.includeMatches,
+  ignoreLocation = Config.ignoreLocation
+} = {}) {
+  if (pattern.length > MAX_BITS) {
+    throw new Error(PATTERN_LENGTH_TOO_LARGE(MAX_BITS));
+  }
+  const patternLen = pattern.length;
+  const textLen = text4.length;
+  const expectedLocation = Math.max(0, Math.min(location, textLen));
+  let currentThreshold = threshold;
+  let bestLocation = expectedLocation;
+  const computeMatches = minMatchCharLength > 1 || includeMatches;
+  const matchMask = computeMatches ? Array(textLen) : [];
+  let index;
+  while ((index = text4.indexOf(pattern, bestLocation)) > -1) {
+    let score2 = computeScore$1(pattern, {
+      currentLocation: index,
+      expectedLocation,
+      distance,
+      ignoreLocation
+    });
+    currentThreshold = Math.min(score2, currentThreshold);
+    bestLocation = index + patternLen;
+    if (computeMatches) {
+      let i = 0;
+      while (i < patternLen) {
+        matchMask[index + i] = 1;
+        i += 1;
+      }
+    }
+  }
+  bestLocation = -1;
+  let lastBitArr = [];
+  let finalScore = 1;
+  let binMax = patternLen + textLen;
+  const mask = 1 << patternLen - 1;
+  for (let i = 0; i < patternLen; i += 1) {
+    let binMin = 0;
+    let binMid = binMax;
+    while (binMin < binMid) {
+      const score3 = computeScore$1(pattern, {
+        errors: i,
+        currentLocation: expectedLocation + binMid,
+        expectedLocation,
+        distance,
+        ignoreLocation
+      });
+      if (score3 <= currentThreshold) {
+        binMin = binMid;
+      } else {
+        binMax = binMid;
+      }
+      binMid = Math.floor((binMax - binMin) / 2 + binMin);
+    }
+    binMax = binMid;
+    let start2 = Math.max(1, expectedLocation - binMid + 1);
+    let finish = findAllMatches ? textLen : Math.min(expectedLocation + binMid, textLen) + patternLen;
+    let bitArr = Array(finish + 2);
+    bitArr[finish + 1] = (1 << i) - 1;
+    for (let j = finish; j >= start2; j -= 1) {
+      let currentLocation = j - 1;
+      let charMatch = patternAlphabet[text4.charAt(currentLocation)];
+      if (computeMatches) {
+        matchMask[currentLocation] = +!!charMatch;
+      }
+      bitArr[j] = (bitArr[j + 1] << 1 | 1) & charMatch;
+      if (i) {
+        bitArr[j] |= (lastBitArr[j + 1] | lastBitArr[j]) << 1 | 1 | lastBitArr[j + 1];
+      }
+      if (bitArr[j] & mask) {
+        finalScore = computeScore$1(pattern, {
+          errors: i,
+          currentLocation,
+          expectedLocation,
+          distance,
+          ignoreLocation
+        });
+        if (finalScore <= currentThreshold) {
+          currentThreshold = finalScore;
+          bestLocation = currentLocation;
+          if (bestLocation <= expectedLocation) {
+            break;
+          }
+          start2 = Math.max(1, 2 * expectedLocation - bestLocation);
+        }
+      }
+    }
+    const score2 = computeScore$1(pattern, {
+      errors: i + 1,
+      currentLocation: expectedLocation,
+      expectedLocation,
+      distance,
+      ignoreLocation
+    });
+    if (score2 > currentThreshold) {
+      break;
+    }
+    lastBitArr = bitArr;
+  }
+  const result = {
+    isMatch: bestLocation >= 0,
+    // Count exact matches (those with a score of 0) to be "almost" exact
+    score: Math.max(1e-3, finalScore)
+  };
+  if (computeMatches) {
+    const indices = convertMaskToIndices(matchMask, minMatchCharLength);
+    if (!indices.length) {
+      result.isMatch = false;
+    } else if (includeMatches) {
+      result.indices = indices;
+    }
+  }
+  return result;
+}
+function createPatternAlphabet(pattern) {
+  let mask = {};
+  for (let i = 0, len = pattern.length; i < len; i += 1) {
+    const char = pattern.charAt(i);
+    mask[char] = (mask[char] || 0) | 1 << len - i - 1;
+  }
+  return mask;
+}
+var stripDiacritics = String.prototype.normalize ? (str) => str.normalize("NFD").replace(/[\u0300-\u036F\u0483-\u0489\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u0711\u0730-\u074A\u07A6-\u07B0\u07EB-\u07F3\u07FD\u0816-\u0819\u081B-\u0823\u0825-\u0827\u0829-\u082D\u0859-\u085B\u08D3-\u08E1\u08E3-\u0903\u093A-\u093C\u093E-\u094F\u0951-\u0957\u0962\u0963\u0981-\u0983\u09BC\u09BE-\u09C4\u09C7\u09C8\u09CB-\u09CD\u09D7\u09E2\u09E3\u09FE\u0A01-\u0A03\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A70\u0A71\u0A75\u0A81-\u0A83\u0ABC\u0ABE-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AE2\u0AE3\u0AFA-\u0AFF\u0B01-\u0B03\u0B3C\u0B3E-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B62\u0B63\u0B82\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD7\u0C00-\u0C04\u0C3E-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C62\u0C63\u0C81-\u0C83\u0CBC\u0CBE-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CE2\u0CE3\u0D00-\u0D03\u0D3B\u0D3C\u0D3E-\u0D44\u0D46-\u0D48\u0D4A-\u0D4D\u0D57\u0D62\u0D63\u0D82\u0D83\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DF2\u0DF3\u0E31\u0E34-\u0E3A\u0E47-\u0E4E\u0EB1\u0EB4-\u0EB9\u0EBB\u0EBC\u0EC8-\u0ECD\u0F18\u0F19\u0F35\u0F37\u0F39\u0F3E\u0F3F\u0F71-\u0F84\u0F86\u0F87\u0F8D-\u0F97\u0F99-\u0FBC\u0FC6\u102B-\u103E\u1056-\u1059\u105E-\u1060\u1062-\u1064\u1067-\u106D\u1071-\u1074\u1082-\u108D\u108F\u109A-\u109D\u135D-\u135F\u1712-\u1714\u1732-\u1734\u1752\u1753\u1772\u1773\u17B4-\u17D3\u17DD\u180B-\u180D\u1885\u1886\u18A9\u1920-\u192B\u1930-\u193B\u1A17-\u1A1B\u1A55-\u1A5E\u1A60-\u1A7C\u1A7F\u1AB0-\u1ABE\u1B00-\u1B04\u1B34-\u1B44\u1B6B-\u1B73\u1B80-\u1B82\u1BA1-\u1BAD\u1BE6-\u1BF3\u1C24-\u1C37\u1CD0-\u1CD2\u1CD4-\u1CE8\u1CED\u1CF2-\u1CF4\u1CF7-\u1CF9\u1DC0-\u1DF9\u1DFB-\u1DFF\u20D0-\u20F0\u2CEF-\u2CF1\u2D7F\u2DE0-\u2DFF\u302A-\u302F\u3099\u309A\uA66F-\uA672\uA674-\uA67D\uA69E\uA69F\uA6F0\uA6F1\uA802\uA806\uA80B\uA823-\uA827\uA880\uA881\uA8B4-\uA8C5\uA8E0-\uA8F1\uA8FF\uA926-\uA92D\uA947-\uA953\uA980-\uA983\uA9B3-\uA9C0\uA9E5\uAA29-\uAA36\uAA43\uAA4C\uAA4D\uAA7B-\uAA7D\uAAB0\uAAB2-\uAAB4\uAAB7\uAAB8\uAABE\uAABF\uAAC1\uAAEB-\uAAEF\uAAF5\uAAF6\uABE3-\uABEA\uABEC\uABED\uFB1E\uFE00-\uFE0F\uFE20-\uFE2F]/g, "") : (str) => str;
+var BitapSearch = class {
+  constructor(pattern, {
+    location = Config.location,
+    threshold = Config.threshold,
+    distance = Config.distance,
+    includeMatches = Config.includeMatches,
+    findAllMatches = Config.findAllMatches,
+    minMatchCharLength = Config.minMatchCharLength,
+    isCaseSensitive = Config.isCaseSensitive,
+    ignoreDiacritics = Config.ignoreDiacritics,
+    ignoreLocation = Config.ignoreLocation
+  } = {}) {
+    this.options = {
+      location,
+      threshold,
+      distance,
+      includeMatches,
+      findAllMatches,
+      minMatchCharLength,
+      isCaseSensitive,
+      ignoreDiacritics,
+      ignoreLocation
+    };
+    pattern = isCaseSensitive ? pattern : pattern.toLowerCase();
+    pattern = ignoreDiacritics ? stripDiacritics(pattern) : pattern;
+    this.pattern = pattern;
+    this.chunks = [];
+    if (!this.pattern.length) {
+      return;
+    }
+    const addChunk = (pattern2, startIndex) => {
+      this.chunks.push({
+        pattern: pattern2,
+        alphabet: createPatternAlphabet(pattern2),
+        startIndex
+      });
+    };
+    const len = this.pattern.length;
+    if (len > MAX_BITS) {
+      let i = 0;
+      const remainder = len % MAX_BITS;
+      const end2 = len - remainder;
+      while (i < end2) {
+        addChunk(this.pattern.substr(i, MAX_BITS), i);
+        i += MAX_BITS;
+      }
+      if (remainder) {
+        const startIndex = len - MAX_BITS;
+        addChunk(this.pattern.substr(startIndex), startIndex);
+      }
+    } else {
+      addChunk(this.pattern, 0);
+    }
+  }
+  searchIn(text4) {
+    const { isCaseSensitive, ignoreDiacritics, includeMatches } = this.options;
+    text4 = isCaseSensitive ? text4 : text4.toLowerCase();
+    text4 = ignoreDiacritics ? stripDiacritics(text4) : text4;
+    if (this.pattern === text4) {
+      let result2 = {
+        isMatch: true,
+        score: 0
+      };
+      if (includeMatches) {
+        result2.indices = [[0, text4.length - 1]];
+      }
+      return result2;
+    }
+    const {
+      location,
+      distance,
+      threshold,
+      findAllMatches,
+      minMatchCharLength,
+      ignoreLocation
+    } = this.options;
+    let allIndices = [];
+    let totalScore = 0;
+    let hasMatches = false;
+    this.chunks.forEach(({ pattern, alphabet, startIndex }) => {
+      const { isMatch, score: score2, indices } = search(text4, pattern, alphabet, {
+        location: location + startIndex,
+        distance,
+        threshold,
+        findAllMatches,
+        minMatchCharLength,
+        includeMatches,
+        ignoreLocation
+      });
+      if (isMatch) {
+        hasMatches = true;
+      }
+      totalScore += score2;
+      if (isMatch && indices) {
+        allIndices = [...allIndices, ...indices];
+      }
+    });
+    let result = {
+      isMatch: hasMatches,
+      score: hasMatches ? totalScore / this.chunks.length : 1
+    };
+    if (hasMatches && includeMatches) {
+      result.indices = allIndices;
+    }
+    return result;
+  }
+};
+var BaseMatch = class {
+  constructor(pattern) {
+    this.pattern = pattern;
+  }
+  static isMultiMatch(pattern) {
+    return getMatch(pattern, this.multiRegex);
+  }
+  static isSingleMatch(pattern) {
+    return getMatch(pattern, this.singleRegex);
+  }
+  search() {
+  }
+};
+function getMatch(pattern, exp) {
+  const matches = pattern.match(exp);
+  return matches ? matches[1] : null;
+}
+var ExactMatch = class extends BaseMatch {
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "exact";
+  }
+  static get multiRegex() {
+    return /^="(.*)"$/;
+  }
+  static get singleRegex() {
+    return /^=(.*)$/;
+  }
+  search(text4) {
+    const isMatch = text4 === this.pattern;
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices: [0, this.pattern.length - 1]
+    };
+  }
+};
+var InverseExactMatch = class extends BaseMatch {
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "inverse-exact";
+  }
+  static get multiRegex() {
+    return /^!"(.*)"$/;
+  }
+  static get singleRegex() {
+    return /^!(.*)$/;
+  }
+  search(text4) {
+    const index = text4.indexOf(this.pattern);
+    const isMatch = index === -1;
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices: [0, text4.length - 1]
+    };
+  }
+};
+var PrefixExactMatch = class extends BaseMatch {
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "prefix-exact";
+  }
+  static get multiRegex() {
+    return /^\^"(.*)"$/;
+  }
+  static get singleRegex() {
+    return /^\^(.*)$/;
+  }
+  search(text4) {
+    const isMatch = text4.startsWith(this.pattern);
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices: [0, this.pattern.length - 1]
+    };
+  }
+};
+var InversePrefixExactMatch = class extends BaseMatch {
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "inverse-prefix-exact";
+  }
+  static get multiRegex() {
+    return /^!\^"(.*)"$/;
+  }
+  static get singleRegex() {
+    return /^!\^(.*)$/;
+  }
+  search(text4) {
+    const isMatch = !text4.startsWith(this.pattern);
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices: [0, text4.length - 1]
+    };
+  }
+};
+var SuffixExactMatch = class extends BaseMatch {
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "suffix-exact";
+  }
+  static get multiRegex() {
+    return /^"(.*)"\$$/;
+  }
+  static get singleRegex() {
+    return /^(.*)\$$/;
+  }
+  search(text4) {
+    const isMatch = text4.endsWith(this.pattern);
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices: [text4.length - this.pattern.length, text4.length - 1]
+    };
+  }
+};
+var InverseSuffixExactMatch = class extends BaseMatch {
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "inverse-suffix-exact";
+  }
+  static get multiRegex() {
+    return /^!"(.*)"\$$/;
+  }
+  static get singleRegex() {
+    return /^!(.*)\$$/;
+  }
+  search(text4) {
+    const isMatch = !text4.endsWith(this.pattern);
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices: [0, text4.length - 1]
+    };
+  }
+};
+var FuzzyMatch = class extends BaseMatch {
+  constructor(pattern, {
+    location = Config.location,
+    threshold = Config.threshold,
+    distance = Config.distance,
+    includeMatches = Config.includeMatches,
+    findAllMatches = Config.findAllMatches,
+    minMatchCharLength = Config.minMatchCharLength,
+    isCaseSensitive = Config.isCaseSensitive,
+    ignoreDiacritics = Config.ignoreDiacritics,
+    ignoreLocation = Config.ignoreLocation
+  } = {}) {
+    super(pattern);
+    this._bitapSearch = new BitapSearch(pattern, {
+      location,
+      threshold,
+      distance,
+      includeMatches,
+      findAllMatches,
+      minMatchCharLength,
+      isCaseSensitive,
+      ignoreDiacritics,
+      ignoreLocation
+    });
+  }
+  static get type() {
+    return "fuzzy";
+  }
+  static get multiRegex() {
+    return /^"(.*)"$/;
+  }
+  static get singleRegex() {
+    return /^(.*)$/;
+  }
+  search(text4) {
+    return this._bitapSearch.searchIn(text4);
+  }
+};
+var IncludeMatch = class extends BaseMatch {
+  constructor(pattern) {
+    super(pattern);
+  }
+  static get type() {
+    return "include";
+  }
+  static get multiRegex() {
+    return /^'"(.*)"$/;
+  }
+  static get singleRegex() {
+    return /^'(.*)$/;
+  }
+  search(text4) {
+    let location = 0;
+    let index;
+    const indices = [];
+    const patternLen = this.pattern.length;
+    while ((index = text4.indexOf(this.pattern, location)) > -1) {
+      location = index + patternLen;
+      indices.push([index, location - 1]);
+    }
+    const isMatch = !!indices.length;
+    return {
+      isMatch,
+      score: isMatch ? 0 : 1,
+      indices
+    };
+  }
+};
+var searchers = [
+  ExactMatch,
+  IncludeMatch,
+  PrefixExactMatch,
+  InversePrefixExactMatch,
+  InverseSuffixExactMatch,
+  SuffixExactMatch,
+  InverseExactMatch,
+  FuzzyMatch
+];
+var searchersLen = searchers.length;
+var SPACE_RE = / +(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/;
+var OR_TOKEN = "|";
+function parseQuery(pattern, options = {}) {
+  return pattern.split(OR_TOKEN).map((item) => {
+    let query = item.trim().split(SPACE_RE).filter((item2) => item2 && !!item2.trim());
+    let results = [];
+    for (let i = 0, len = query.length; i < len; i += 1) {
+      const queryItem = query[i];
+      let found = false;
+      let idx = -1;
+      while (!found && ++idx < searchersLen) {
+        const searcher = searchers[idx];
+        let token = searcher.isMultiMatch(queryItem);
+        if (token) {
+          results.push(new searcher(token, options));
+          found = true;
+        }
+      }
+      if (found) {
+        continue;
+      }
+      idx = -1;
+      while (++idx < searchersLen) {
+        const searcher = searchers[idx];
+        let token = searcher.isSingleMatch(queryItem);
+        if (token) {
+          results.push(new searcher(token, options));
+          break;
+        }
+      }
+    }
+    return results;
+  });
+}
+var MultiMatchSet = /* @__PURE__ */ new Set([FuzzyMatch.type, IncludeMatch.type]);
+var ExtendedSearch = class {
+  constructor(pattern, {
+    isCaseSensitive = Config.isCaseSensitive,
+    ignoreDiacritics = Config.ignoreDiacritics,
+    includeMatches = Config.includeMatches,
+    minMatchCharLength = Config.minMatchCharLength,
+    ignoreLocation = Config.ignoreLocation,
+    findAllMatches = Config.findAllMatches,
+    location = Config.location,
+    threshold = Config.threshold,
+    distance = Config.distance
+  } = {}) {
+    this.query = null;
+    this.options = {
+      isCaseSensitive,
+      ignoreDiacritics,
+      includeMatches,
+      minMatchCharLength,
+      findAllMatches,
+      ignoreLocation,
+      location,
+      threshold,
+      distance
+    };
+    pattern = isCaseSensitive ? pattern : pattern.toLowerCase();
+    pattern = ignoreDiacritics ? stripDiacritics(pattern) : pattern;
+    this.pattern = pattern;
+    this.query = parseQuery(this.pattern, this.options);
+  }
+  static condition(_, options) {
+    return options.useExtendedSearch;
+  }
+  searchIn(text4) {
+    const query = this.query;
+    if (!query) {
+      return {
+        isMatch: false,
+        score: 1
+      };
+    }
+    const { includeMatches, isCaseSensitive, ignoreDiacritics } = this.options;
+    text4 = isCaseSensitive ? text4 : text4.toLowerCase();
+    text4 = ignoreDiacritics ? stripDiacritics(text4) : text4;
+    let numMatches = 0;
+    let allIndices = [];
+    let totalScore = 0;
+    for (let i = 0, qLen = query.length; i < qLen; i += 1) {
+      const searchers2 = query[i];
+      allIndices.length = 0;
+      numMatches = 0;
+      for (let j = 0, pLen = searchers2.length; j < pLen; j += 1) {
+        const searcher = searchers2[j];
+        const { isMatch, indices, score: score2 } = searcher.search(text4);
+        if (isMatch) {
+          numMatches += 1;
+          totalScore += score2;
+          if (includeMatches) {
+            const type7 = searcher.constructor.type;
+            if (MultiMatchSet.has(type7)) {
+              allIndices = [...allIndices, ...indices];
+            } else {
+              allIndices.push(indices);
+            }
+          }
+        } else {
+          totalScore = 0;
+          numMatches = 0;
+          allIndices.length = 0;
+          break;
+        }
+      }
+      if (numMatches) {
+        let result = {
+          isMatch: true,
+          score: totalScore / numMatches
+        };
+        if (includeMatches) {
+          result.indices = allIndices;
+        }
+        return result;
+      }
+    }
+    return {
+      isMatch: false,
+      score: 1
+    };
+  }
+};
+var registeredSearchers = [];
+function register2(...args) {
+  registeredSearchers.push(...args);
+}
+function createSearcher(pattern, options) {
+  for (let i = 0, len = registeredSearchers.length; i < len; i += 1) {
+    let searcherClass = registeredSearchers[i];
+    if (searcherClass.condition(pattern, options)) {
+      return new searcherClass(pattern, options);
+    }
+  }
+  return new BitapSearch(pattern, options);
+}
+var LogicalOperator = {
+  AND: "$and",
+  OR: "$or"
+};
+var KeyType = {
+  PATH: "$path",
+  PATTERN: "$val"
+};
+var isExpression = (query) => !!(query[LogicalOperator.AND] || query[LogicalOperator.OR]);
+var isPath = (query) => !!query[KeyType.PATH];
+var isLeaf = (query) => !isArray(query) && isObject(query) && !isExpression(query);
+var convertToExplicit = (query) => ({
+  [LogicalOperator.AND]: Object.keys(query).map((key) => ({
+    [key]: query[key]
+  }))
+});
+function parse(query, options, { auto = true } = {}) {
+  const next2 = (query2) => {
+    let keys2 = Object.keys(query2);
+    const isQueryPath = isPath(query2);
+    if (!isQueryPath && keys2.length > 1 && !isExpression(query2)) {
+      return next2(convertToExplicit(query2));
+    }
+    if (isLeaf(query2)) {
+      const key = isQueryPath ? query2[KeyType.PATH] : keys2[0];
+      const pattern = isQueryPath ? query2[KeyType.PATTERN] : query2[key];
+      if (!isString(pattern)) {
+        throw new Error(LOGICAL_SEARCH_INVALID_QUERY_FOR_KEY(key));
+      }
+      const obj = {
+        keyId: createKeyId(key),
+        pattern
+      };
+      if (auto) {
+        obj.searcher = createSearcher(pattern, options);
+      }
+      return obj;
+    }
+    let node = {
+      children: [],
+      operator: keys2[0]
+    };
+    keys2.forEach((key) => {
+      const value = query2[key];
+      if (isArray(value)) {
+        value.forEach((item) => {
+          node.children.push(next2(item));
+        });
+      }
+    });
+    return node;
+  };
+  if (!isExpression(query)) {
+    query = convertToExplicit(query);
+  }
+  return next2(query);
+}
+function computeScore(results, { ignoreFieldNorm = Config.ignoreFieldNorm }) {
+  results.forEach((result) => {
+    let totalScore = 1;
+    result.matches.forEach(({ key, norm: norm2, score: score2 }) => {
+      const weight = key ? key.weight : null;
+      totalScore *= Math.pow(
+        score2 === 0 && weight ? Number.EPSILON : score2,
+        (weight || 1) * (ignoreFieldNorm ? 1 : norm2)
+      );
+    });
+    result.score = totalScore;
+  });
+}
+function transformMatches(result, data2) {
+  const matches = result.matches;
+  data2.matches = [];
+  if (!isDefined(matches)) {
+    return;
+  }
+  matches.forEach((match2) => {
+    if (!isDefined(match2.indices) || !match2.indices.length) {
+      return;
+    }
+    const { indices, value } = match2;
+    let obj = {
+      indices,
+      value
+    };
+    if (match2.key) {
+      obj.key = match2.key.src;
+    }
+    if (match2.idx > -1) {
+      obj.refIndex = match2.idx;
+    }
+    data2.matches.push(obj);
+  });
+}
+function transformScore(result, data2) {
+  data2.score = result.score;
+}
+function format(results, docs, {
+  includeMatches = Config.includeMatches,
+  includeScore = Config.includeScore
+} = {}) {
+  const transformers = [];
+  if (includeMatches)
+    transformers.push(transformMatches);
+  if (includeScore)
+    transformers.push(transformScore);
+  return results.map((result) => {
+    const { idx } = result;
+    const data2 = {
+      item: docs[idx],
+      refIndex: idx
+    };
+    if (transformers.length) {
+      transformers.forEach((transformer) => {
+        transformer(result, data2);
+      });
+    }
+    return data2;
+  });
+}
+var Fuse = class {
+  constructor(docs, options = {}, index) {
+    this.options = { ...Config, ...options };
+    if (this.options.useExtendedSearch && false) {
+      throw new Error(EXTENDED_SEARCH_UNAVAILABLE);
+    }
+    this._keyStore = new KeyStore(this.options.keys);
+    this.setCollection(docs, index);
+  }
+  setCollection(docs, index) {
+    this._docs = docs;
+    if (index && !(index instanceof FuseIndex)) {
+      throw new Error(INCORRECT_INDEX_TYPE);
+    }
+    this._myIndex = index || createIndex(this.options.keys, this._docs, {
+      getFn: this.options.getFn,
+      fieldNormWeight: this.options.fieldNormWeight
+    });
+  }
+  add(doc2) {
+    if (!isDefined(doc2)) {
+      return;
+    }
+    this._docs.push(doc2);
+    this._myIndex.add(doc2);
+  }
+  remove(predicate = () => false) {
+    const results = [];
+    for (let i = 0, len = this._docs.length; i < len; i += 1) {
+      const doc2 = this._docs[i];
+      if (predicate(doc2, i)) {
+        this.removeAt(i);
+        i -= 1;
+        len -= 1;
+        results.push(doc2);
+      }
+    }
+    return results;
+  }
+  removeAt(idx) {
+    this._docs.splice(idx, 1);
+    this._myIndex.removeAt(idx);
+  }
+  getIndex() {
+    return this._myIndex;
+  }
+  search(query, { limit = -1 } = {}) {
+    const {
+      includeMatches,
+      includeScore,
+      shouldSort,
+      sortFn,
+      ignoreFieldNorm
+    } = this.options;
+    let results = isString(query) ? isString(this._docs[0]) ? this._searchStringList(query) : this._searchObjectList(query) : this._searchLogical(query);
+    computeScore(results, { ignoreFieldNorm });
+    if (shouldSort) {
+      results.sort(sortFn);
+    }
+    if (isNumber3(limit) && limit > -1) {
+      results = results.slice(0, limit);
+    }
+    return format(results, this._docs, {
+      includeMatches,
+      includeScore
+    });
+  }
+  _searchStringList(query) {
+    const searcher = createSearcher(query, this.options);
+    const { records } = this._myIndex;
+    const results = [];
+    records.forEach(({ v: text4, i: idx, n: norm2 }) => {
+      if (!isDefined(text4)) {
+        return;
+      }
+      const { isMatch, score: score2, indices } = searcher.searchIn(text4);
+      if (isMatch) {
+        results.push({
+          item: text4,
+          idx,
+          matches: [{ score: score2, value: text4, norm: norm2, indices }]
+        });
+      }
+    });
+    return results;
+  }
+  _searchLogical(query) {
+    const expression3 = parse(query, this.options);
+    const evaluate = (node, item, idx) => {
+      if (!node.children) {
+        const { keyId, searcher } = node;
+        const matches = this._findMatches({
+          key: this._keyStore.get(keyId),
+          value: this._myIndex.getValueForItemAtKeyId(item, keyId),
+          searcher
+        });
+        if (matches && matches.length) {
+          return [
+            {
+              idx,
+              item,
+              matches
+            }
+          ];
+        }
+        return [];
+      }
+      const res = [];
+      for (let i = 0, len = node.children.length; i < len; i += 1) {
+        const child = node.children[i];
+        const result = evaluate(child, item, idx);
+        if (result.length) {
+          res.push(...result);
+        } else if (node.operator === LogicalOperator.AND) {
+          return [];
+        }
+      }
+      return res;
+    };
+    const records = this._myIndex.records;
+    const resultMap = {};
+    const results = [];
+    records.forEach(({ $: item, i: idx }) => {
+      if (isDefined(item)) {
+        let expResults = evaluate(expression3, item, idx);
+        if (expResults.length) {
+          if (!resultMap[idx]) {
+            resultMap[idx] = { idx, item, matches: [] };
+            results.push(resultMap[idx]);
+          }
+          expResults.forEach(({ matches }) => {
+            resultMap[idx].matches.push(...matches);
+          });
+        }
+      }
+    });
+    return results;
+  }
+  _searchObjectList(query) {
+    const searcher = createSearcher(query, this.options);
+    const { keys: keys2, records } = this._myIndex;
+    const results = [];
+    records.forEach(({ $: item, i: idx }) => {
+      if (!isDefined(item)) {
+        return;
+      }
+      let matches = [];
+      keys2.forEach((key, keyIndex) => {
+        matches.push(
+          ...this._findMatches({
+            key,
+            value: item[keyIndex],
+            searcher
+          })
+        );
+      });
+      if (matches.length) {
+        results.push({
+          idx,
+          item,
+          matches
+        });
+      }
+    });
+    return results;
+  }
+  _findMatches({ key, value, searcher }) {
+    if (!isDefined(value)) {
+      return [];
+    }
+    let matches = [];
+    if (isArray(value)) {
+      value.forEach(({ v: text4, i: idx, n: norm2 }) => {
+        if (!isDefined(text4)) {
+          return;
+        }
+        const { isMatch, score: score2, indices } = searcher.searchIn(text4);
+        if (isMatch) {
+          matches.push({
+            score: score2,
+            key,
+            value: text4,
+            idx,
+            norm: norm2,
+            indices
+          });
+        }
+      });
+    } else {
+      const { v: text4, n: norm2 } = value;
+      const { isMatch, score: score2, indices } = searcher.searchIn(text4);
+      if (isMatch) {
+        matches.push({ score: score2, key, value: text4, norm: norm2, indices });
+      }
+    }
+    return matches;
+  }
+};
+Fuse.version = "7.1.0";
+Fuse.createIndex = createIndex;
+Fuse.parseIndex = parseIndex;
+Fuse.config = Config;
+{
+  Fuse.parseQuery = parse;
+}
+{
+  register2(ExtendedSearch);
 }
 
 // common/navigation.ts
-var log16 = new Logger({ namespace: "Navigation", minLevel: "debug" });
-async function fetchFileTree2(treeEl = document.createElement("div")) {
-  log16.debug("fetching filetree");
+var log19 = new Logger({ namespace: "Navigation", minLevel: "debug" });
+var fuse;
+function flattenFilePaths(entries, prefix2 = "") {
+  const paths = [];
+  for (const entry of entries) {
+    const currentPath = prefix2 ? `${prefix2}/${entry.name}` : entry.name;
+    if (entry.type === "file") {
+      paths.push(currentPath);
+    } else if (entry.children && entry.children.length > 0) {
+      paths.push(...flattenFilePaths(entry.children, currentPath));
+    }
+  }
+  return paths;
+}
+async function initFuse() {
+  fuse = new Fuse([""], { includeScore: true, threshold: 0.4 });
+}
+function searchFuse(query) {
+  let res = fuse?.search(query) ?? [];
+  log19.debug("[fuse] - ", res);
+  return res;
+}
+async function getFileList() {
   const response = await fetch("/api/notes");
   const tree = await response.json();
+  updateFuseWithFilenames(flattenFilePaths(tree));
+  return tree;
+}
+function updateFuseWithFilenames(newList) {
+  fuse = new Fuse(newList, { includeScore: true, threshold: 0.4 });
+}
+async function fetchFileTree2(treeEl = document.createElement("div")) {
+  log19.debug("fetching filetree");
+  const tree = await getFileList();
   treeEl.innerHTML = "";
   renderTree(tree, treeEl);
   return treeEl;
 }
 async function generateNavigation(paneId = "pane1") {
+  await initFuse();
+  await getFileList();
   let navbar = document.querySelector(".navigation");
   await fetchFileTree2(navbar);
 }
 async function loadFile(filename) {
   const response = await fetch("/notes/" + filename);
   if (!response.ok)
-    throw new Error("Failed to fetch file");
+    return "";
   return await response.text();
 }
 async function saveFile(text4, filename = null) {
   if (!filename) {
-    const activeTab = getCurrentTab();
+    const activeTab = getActiveTab();
     if (!activeTab) {
       return;
     }
-    log16.debug(activeTab);
+    log19.debug(activeTab);
     filename = activeTab.title;
   }
   const res = await fetch("/notes/" + filename, {
@@ -63486,10 +65109,10 @@ async function saveFile(text4, filename = null) {
     body: text4
   });
   if (!res.ok) {
-    log16.error(`Failed to save file: ${filename}`);
+    log19.error(`Failed to save file: ${filename}`);
     return;
   }
-  log16.info(`Saved ${filename}`);
+  log19.info(`Saved ${filename}`);
   eventBus.emit("fileSaved", { filename });
   showSaveStatus("saved");
 }
@@ -63550,11 +65173,10 @@ function toggleSidebar() {
 }
 
 // common/main.ts
-var log17 = new Logger({ namespace: "Main", minLevel: "debug" });
+var log20 = new Logger({ namespace: "Main", minLevel: "debug" });
 Logging.enableAll();
 (async () => {
   await initTabs();
-  setupContainerDragAndDrop("main");
   await generateNavigation();
   const initialFile = getInitialFileFromURL();
   if (initialFile) {
