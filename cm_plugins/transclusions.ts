@@ -13,7 +13,7 @@ import { saveFile, loadFile } from "../common/navigation.ts";
 import { eventBus } from "../common/events.ts";
 import { isRangeSelected } from "../common/pluginhelpers.ts";
 import { Logger } from "../common/logger.ts";
-import { getCurrentTab } from "../common/tabs.ts";
+import { getActiveTab } from "../common/tabs.ts";
 
 const log = new Logger({ namespace: "Transclusions", minLevel: "debug" });
 
@@ -194,7 +194,7 @@ export class TransclusionWidget extends WidgetType {
               if (update.docChanged) {
                 const updatedContent = update.state.doc.toString();
                 log.debug("found it")
-                let filename = getCurrentTab().title
+                let filename = getActiveTab().title
                 saveTransclusion(updatedContent, this.target, filename, log);
             
                 // Signal active editing
@@ -246,7 +246,7 @@ export const transclusionPlugin = ViewPlugin.fromClass(
     }
 
     onRefresh = (event: Event) => {
-      if (getCurrentTab()?.title === (event as any).filename) {
+      if (getActiveTab()?.title === (event as any).filename) {
         this.decorations = this.buildDecorations(this.view);
       }
     };
