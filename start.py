@@ -102,11 +102,11 @@ def notes(filename):
             with open(save_path) as f:
                 data = f.read()
         except FileNotFoundError:
-            ensure_file_exists(save_path)
-            with open(save_path, 'w', encoding='utf-8') as f:
-                f.write(request.data.decode("utf-8"))
+            #ensure_file_exists(save_path)
+            #with open(save_path, 'w', encoding='utf-8') as f:
+            #    f.write(request.data.decode("utf-8"))
 
-            return ""
+            return "File not found", 404
         return data
     if request.method == "POST":
         today = date.today()      
