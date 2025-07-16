@@ -2,25 +2,53 @@ import { Decoration, DecorationSet, ViewPlugin, ViewUpdate, WidgetType, EditorVi
 import { RangeSetBuilder } from "npm:@codemirror/state";
 import { isRangeSelected } from "../common/pluginhelpers.ts";
 import { metadataStore, Wikilink } from "./metadata.ts";
-import { openEditorTab, switchToTab } from "../common/tabs.ts";
+import { openEditorTab } from "../common/tabs.ts";
+import { loadFile } from "../common/navigation.ts"; // <-- your existing async loader
+import { Logger } from "../common/logger.ts";
+
+const log = new Logger({ namespace: 'wikilinks', minLevel: 'debug' });
+
 
 const wikilinkRegex = /\[\[([^\]|#]+(?:#[^\]|]+)?)(?:\|([^\]]+))?\]\]/g;
 
+const brokenLinks = new Set<string>();
+
+// Debounced checking of page existence
+const checkedLinks = new Set<string>();
+async function checkWikilinksExistence(view: EditorView, links: string[]) {
+  const toCheck = links.filter(link => !checkedLinks.has(link));
+  for (const link of toCheck) {
+    checkedLinks.add(link);
+    let res = await loadFile(link);
+    if (res.length > 0){
+      brokenLinks.delete(link);
+    } else  {
+      log.debug("result", res)
+      brokenLinks.add(link);
+    }
+  }
+
+  requestIdleCallback(() => {
+    view.dispatch({ effects: [] });
+  });
+  
+}
+
 class WikilinkWidget extends WidgetType {
-  constructor(readonly page: string, readonly display: string) {
+  constructor(readonly page: string, readonly display: string, readonly broken: boolean) {
     super();
   }
 
   toDOM() {
     const span = document.createElement("span");
-    span.className = "cm-wikilink";
+    span.className = this.broken ? "cm-wikilink cm-wikilink-broken" : "cm-wikilink";
     span.textContent = this.display;
-    span.style.color = "#2a5db0";
+    span.style.color = this.broken ? "red" : "#2a5db0";
     span.style.cursor = "pointer";
     span.onmousedown = () => {
-      console.log(`Navigate to page: ${this.page}`);
-      // You can emit an event or use routing here
-      openEditorTab({filename: this.page})
+      
+        openEditorTab({ filename: this.page });
+      
     };
     return span;
   }
@@ -48,6 +76,7 @@ export const wikilinkPlugin = ViewPlugin.fromClass(
       const builder = new RangeSetBuilder<Decoration>();
       const { doc } = view.state;
       const foundWikilinks: Wikilink[] = [];
+      const seenPages: Set<string> = new Set();
 
       for (const { from, to } of view.visibleRanges) {
         let pos = from;
@@ -61,28 +90,35 @@ export const wikilinkPlugin = ViewPlugin.fromClass(
             const end = start + match[0].length;
             const page = match[1];
             const display = match[2] || page;
-            if (isRangeSelected(view, start, end)){
-                builder.add(start, end, Decoration.mark({ class: "cm-wikilink" }));
 
+            const isBroken = brokenLinks.has(page);
+            seenPages.add(page);
+
+            if (isRangeSelected(view, start, end)) {
+              builder.add(start, end, Decoration.mark({ class: isBroken ? "cm-wikilink-broken" : "cm-wikilink" }));
             } else {
-                builder.add(
+              builder.add(
                 start,
                 end,
                 Decoration.replace({
-                    widget: new WikilinkWidget(page, display),
-                    inclusive: false,
+                  widget: new WikilinkWidget(page, display, isBroken),
+                  inclusive: false,
                 })
-                );
+              );
             }
-            let wikiobj = {target: page, line: line.number, context: line.text}
-            if (display !== page){wikiobj["alias"] = display}
-            foundWikilinks.push(wikiobj)
+
+            const wikiobj: Wikilink = { target: page, line: line.number, context: line.text };
+            if (display !== page) wikiobj.alias = display;
+            foundWikilinks.push(wikiobj);
           }
 
           pos = line.to + 1;
         }
       }
+
       metadataStore.updateWikilinks(foundWikilinks);
+
+      checkWikilinksExistence(view, [...seenPages]); // Async file check
 
       return builder.finish();
     }
