@@ -17,8 +17,10 @@ export const SlashCommandPlugin = ViewPlugin.fromClass(class {
   slashCommands = [
     { name: "tag", label: "Insert a tag", insert: "#tag" },
     { name: "todo", label: "Insert a to-do", insert: "- [ ] " },
-    { name: "date", label: "Insert today’s date", insert: `[[Dailies/${this.formatDateDMY(new Date())}]]` },
-    { name: "toggle task", label: "Toggle the current task", run: this.toggleCurrentTask } 
+    { name: "today", label: "Insert today’s date", insert: `[[Dailies/${this.currentDate(new Date())}]]` },
+    { name: "time", label: "Insert current time", insert: `${this.currentTime()}` },
+    { name: "toggle task", label: "Toggle the current task", run: this.toggleCurrentTask },
+    { name: "warning", label: "Insert warning callout", insert: "> **warning** Warning\n> "} 
   ];
   selectedIndex = 0;
   menuItems: HTMLElement[] = [];
@@ -50,7 +52,13 @@ export const SlashCommandPlugin = ViewPlugin.fromClass(class {
       });
     }
   }
-  formatDateDMY(date: Date): string {
+  currentTime(): string {
+    const date = new Date()
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+  currentDate(date: Date): string {
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero-based
     const year = date.getFullYear();
@@ -202,7 +210,8 @@ export const slashMenuKeymap = keymap.of([
       const plugin = view.plugin(SlashCommandPlugin);
       if (!plugin || !plugin.menuItems.length) return false;
       return plugin.selectItem(plugin.selectedIndex); // now returns true if successful
-    }
+    },
+    preventDefault: true // <--- prevents default newline behavior
   },
   {
     key: "Escape",
