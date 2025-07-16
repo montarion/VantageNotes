@@ -1,15 +1,55 @@
 import { Logger } from './logger.ts';
+import { loadFile } from './navigation.ts';
 import { openEditorTab } from './tabs.ts';
 
 const log = new Logger({ namespace: 'Metadata', minLevel: 'debug' });
 
 async function getMetadata(filename: string) {
-  const response = await fetch(`/api/metadata/${encodeURIComponent(filename)}`);
-  if (!response.ok) {
-    log.warn(`No metadata found for ${filename}`);
-    return null;
-  }
-  return await response.json();
+  const response = await loadFile(filename)
+  return extractMetadataFromText(response)
+}
+export function extractMetadataFromText(text: string) {
+  const wikilinks = [...text.matchAll(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g)].map(m => ({
+    target: m[1],
+    alias: m[2] || null
+  }));
+
+  const headers = [...text.matchAll(/^(#{1,6})\s+(.*)/gm)].map(m => ({
+    level: m[1].length,
+    text: m[2]
+  }));
+
+  const tasks = [...text.matchAll(/^[-*] \[( |x|X)\] (.+)/gm)].map(m => ({
+    checked: m[1].toLowerCase() === 'x',
+    text: m[2]
+  }));
+
+  const tags = [...new Set([...text.matchAll(/#(\w+)/g)].map(m => m[1]))];
+
+  const hyperlinks = [...text.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)].map(m => ({
+    label: m[1],
+    url: m[2]
+  }));
+
+  const code_blocks = [...text.matchAll(/```(\w+)?\n([\s\S]*?)```/g)].map(m => ({
+    language: m[1] || 'plain',
+    code: m[2]
+  }));
+
+  const images = [...text.matchAll(/!\[(.*?)\]\((.*?)\)/g)].map(m => ({
+    alt_text: m[1],
+    url: m[2]
+  }));
+
+  return {
+    wikilinks,
+    headers,
+    tasks,
+    tags,
+    hyperlinks,
+    code_blocks,
+    images
+  };
 }
 
 export async function showMetadataPanel(filename: string) {
@@ -44,7 +84,8 @@ export async function showMetadataPanel(filename: string) {
       content.innerHTML = "<p>No metadata available</p>";
       return;
     }
-    content.innerHTML = renderMetadata(metadata);
+    content.innerHTML = ""
+    content.append(renderMetadata(metadata));
   } catch (e) {
     log.error("Failed to load metadata:", e);
     const content = panel.querySelector(".panel-content")!;
@@ -52,65 +93,121 @@ export async function showMetadataPanel(filename: string) {
   }
 }
 
-function renderMetadata(metadata: any): string {
+function renderMetadata(metadata: any): HTMLElement {
   const escape = (s: string) => s.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-  const section = (title: string, content: string) =>
-    `<div class="panel">
-       <div class="panel-header">${title} (click to toggle)</div>
-       <div class="panel-content">${content}</div>
-     </div>`;
+  const createSection = (title: string, children: (HTMLElement | string)[]): HTMLElement => {
+    const section = document.createElement("div");
+    section.className = "panel";
 
-  const tags = metadata.tags?.map((t: any) =>
-    `<a href="#" class="cm-tag" data-tag="${escape(t)}">#${escape(t)}</a>`
-  ).join(", ") || "None";
+    const header = document.createElement("div");
+    header.className = "panel-header";
+    header.textContent = `${title} (click to toggle)`;
 
-  const headers = metadata.headers?.map((h: any) =>
-    `<a href="#" class="meta-header" data-header="${escape(h.text)}">H${h.level}: ${escape(h.text)}</a>`
-  ).join("<br>") || "None";
+    const content = document.createElement("div");
+    content.className = "panel-content";
 
-  const tasks = metadata.tasks?.map((t: any) =>
-    `<label class="meta-task">
-      <input type="checkbox" ${t.checked ? "checked" : ""} data-task="${escape(t.text)}">
-      ${escape(t.text)}
-    </label>`
-  ).join("<br>") || "None";
+    if (children.length === 0) {
+      content.textContent = "None";
+    } else {
+      for (const child of children) {
+        if (typeof child === "string") {
+          content.appendChild(document.createTextNode(child));
+        } else {
+          content.appendChild(child);
+        }
+      }
+    }
 
-  const wikilinks = metadata.wikilinks?.map((w: any) =>
-    `<a href="#" class="cm-wikilink" data-wikilink="${escape(w.target)}">
-      [[${escape(w.target)}${w.alias ? `|${escape(w.alias)}` : ""}]]
-    </a>`
-  ).join("<br>") || "None";
+    section.appendChild(header);
+    section.appendChild(content);
+    return section;
+  };
 
-  const links = metadata.hyperlinks?.map((l: any) =>
-    `<a href="${escape(l.url)}" target="_blank" class="meta-link">
-      ${escape(l.label || l.url)}
-    </a>`
-  ).join("<br>") || "None";
+  const renderTags = () => (metadata.tags || []).map((t: string, i: number) => {
+    const tag = document.createElement("a");
+    tag.href = "#";
+    tag.className = "cm-tag";
+    tag.dataset.tag = t;
+    tag.textContent = `#${t}`;
+    if (i > 0) return [document.createTextNode(", "), tag];
+    return [tag];
+  }).flat();
 
-  const codes = metadata.code_blocks?.map((c: any) =>
-    `<a href="#" class="meta-code" data-code-lang="${escape(c.language || "plain")}">
-      ${escape(c.language || "plain")}
-    </a>`
-  ).join(", ") || "None";
+  const renderHeaders = () => (metadata.headers || []).map((h: any) => {
+    const header = document.createElement("a");
+    header.href = "#";
+    header.className = "meta-header";
+    header.dataset.header = h.text;
+    header.textContent = `H${h.level}: ${h.text}`;
+    return [header, document.createElement("br")];
+  }).flat();
 
-  const images = metadata.images?.map((img: any) =>
-    `<img src="${escape(img.url)}" alt="${escape(img.alt_text || '')}" style="max-width: 100px">`
-  ).join(" ") || "None";
+  const renderTasks = () => (metadata.tasks || []).map((t: any) => {
+    const label = document.createElement("label");
+    label.className = "meta-task";
 
-   // Helper to include only non-"None" sections
-   const sections = [
-    tags !== "None" ? section("Tags", tags) : "",
-    headers !== "None" ? section("Headers", headers) : "",
-    tasks !== "None" ? section("Tasks", tasks) : "",
-    wikilinks !== "None" ? section("Wikilinks", wikilinks) : "",
-    links !== "None" ? section("Links", links) : "",
-    codes !== "None" ? section("Languages", codes) : "",
-    images !== "None" ? section("Images", images) : "",
-  ];
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = t.checked;
+    checkbox.dataset.task = t.text;
 
-  return sections.filter(Boolean).join("\n");
+    label.appendChild(checkbox);
+    label.append(` ${t.text}`);
+
+    return [label, document.createElement("br")];
+  }).flat();
+
+  const renderWikilinks = () => (metadata.wikilinks || []).map((w: any) => {
+    const link = document.createElement("a");
+    link.href = "#";
+    link.className = "cm-wikilink";
+    link.dataset.wikilink = w.target;
+    link.textContent = `[[${w.target}${w.alias ? `|${w.alias}` : ""}]]`;
+    return [link, document.createElement("br")];
+  }).flat();
+
+  const renderLinks = () => (metadata.hyperlinks || []).map((l: any) => {
+    const link = document.createElement("a");
+    link.href = l.url;
+    link.target = "_blank";
+    link.className = "meta-link";
+    link.textContent = l.label || l.url;
+    return [link, document.createElement("br")];
+  }).flat();
+
+  const renderCodeLanguages = () => (metadata.code_blocks || []).map((c: any, i: number) => {
+    const lang = document.createElement("a");
+    lang.href = "#";
+    lang.className = "meta-code";
+    lang.dataset.codeLang = c.language || "plain";
+    lang.textContent = c.language || "plain";
+    if (i > 0) return [document.createTextNode(", "), lang];
+    return [lang];
+  }).flat();
+
+  const renderImages = () => (metadata.images || []).map((img: any) => {
+    const image = document.createElement("img");
+    image.src = img.url;
+    image.alt = img.alt_text || "";
+    image.style.maxWidth = "100px";
+    return image;
+  });
+
+  const container = document.createElement("div");
+
+  if ((metadata.tags || []).length) container.appendChild(createSection("Tags", renderTags()));
+  if ((metadata.headers || []).length) container.appendChild(createSection("Headers", renderHeaders()));
+  if ((metadata.tasks || []).length) container.appendChild(createSection("Tasks", renderTasks()));
+  if ((metadata.wikilinks || []).length) container.appendChild(createSection("Wikilinks", renderWikilinks()));
+  if ((metadata.hyperlinks || []).length) container.appendChild(createSection("Links", renderLinks()));
+  if ((metadata.code_blocks || []).length) container.appendChild(createSection("Languages", renderCodeLanguages()));
+  if ((metadata.images || []).length) container.appendChild(createSection("Images", renderImages()));
+
+  return container;
 }
+
+
 
 
 export async function showTagPanel(tag: string) {
