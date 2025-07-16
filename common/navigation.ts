@@ -1,37 +1,78 @@
-import { getCurrentTab, openEditorTab } from "./tabs.ts";
+import { getActiveTab, openEditorTab } from "./tabs.ts";
 import { showSaveStatus } from "./topbar.ts";
 import { Logger } from './logger.ts';
 import { eventBus } from "./events.ts";
+import Fuse from "npm:fuse.js"
+
 
 const log = new Logger({ namespace: 'Navigation', minLevel: 'debug' });
 
-export async function fetchFileTree(treeEl: HTMLElement = document.createElement("div")): Promise<HTMLElement> {
-  log.debug("fetching filetree");
+let fuse;
+
+type FileEntry = {
+  name: string;
+  type: "file" | "folder";
+  children?: FileEntry[];
+};
+
+function flattenFilePaths(entries: FileEntry[], prefix = ""): string[] {
+  const paths: string[] = [];
+
+  for (const entry of entries) {
+    const currentPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+
+    if (entry.type === "file") {
+      paths.push(currentPath);
+    } else if (entry.children && entry.children.length > 0) {
+      paths.push(...flattenFilePaths(entry.children, currentPath));
+    }
+  }
+
+  return paths;
+}
+
+export async function initFuse() {
+  fuse = new Fuse([""], { includeScore: true, threshold: 0.4 });
+}
+
+export function searchFuse(query: string) {
+  let res = fuse?.search(query) ?? [];
+  log.debug("[fuse] - ", res)
+  return res
+}
+
+
+export async function getFileList() {
   const response = await fetch("/api/notes");
   const tree = await response.json();
+  updateFuseWithFilenames(flattenFilePaths(tree))
+  return tree
+}
+
+export function updateFuseWithFilenames(newList: string[]) {
+  fuse = new Fuse(newList, { includeScore: true, threshold: 0.4 });
+}
+export async function fetchFileTree(treeEl: HTMLElement = document.createElement("div")): Promise<HTMLElement> {
+  log.debug("fetching filetree");
+  const tree = await getFileList()
   treeEl.innerHTML = "";
   renderTree(tree, treeEl);
   return treeEl;
 }
 
 export async function generateNavigation(paneId = "pane1") {
-  // Create navigation tab in specified pane
-    //createTab({
-    //  paneId: paneId,
-    //  tabId: "nav",
-    //  title: "Navigation",
-    //  contentEl: await fetchFileTree(),
-    //  isEditor: false,
-    //})
+    await initFuse()
+    await getFileList()
     let navbar = document.querySelector(".navigation")
     await fetchFileTree(navbar)
+    
     //navbar?.append()
   
 }
 
 export async function loadFile(filename: string): Promise<string> {
   const response = await fetch("/notes/" + filename);
-  if (!response.ok) throw new Error("Failed to fetch file");
+  if (!response.ok) return "";
   return await response.text();
 }
 
@@ -49,7 +90,7 @@ export async function openNavigationTab(paneId = "left") {
 
 export async function saveFile(text: string, filename: string | null = null) {
   if (!filename) {
-    const activeTab = getCurrentTab();
+    const activeTab = getActiveTab();
     if (!activeTab) {
       return;
     }
