@@ -49,7 +49,6 @@ export const inlineCodePlugin = ViewPlugin.fromClass(
             end - 1,
             Decoration.mark({ class: "cm-inline-code" })
           );
-          console.log(!isRangeSelected(view, start, end))
           if (!isRangeSelected(view, start, end)){
             builder.add(end - 1, end, Decoration.replace({}));
           }

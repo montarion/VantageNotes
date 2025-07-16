@@ -15,19 +15,15 @@ const tagMatcher = /#(\w+)(?=\s|$)/g;
 
 export const tagPlugin: Extension = ViewPlugin.fromClass(
   class {
-    readonly decorations: DecorationSet;
+    decorations: DecorationSet;
 
     constructor(view: EditorView) {
       this.decorations = this.buildDecorations(view);
     }
 
     update(update: ViewUpdate) {
-      if (
-        update.docChanged ||
-        update.viewportChanged ||
-        update.selectionSet
-      ) {
-        this.buildDecorations(update.view);
+      if (update.docChanged || update.viewportChanged || update.selectionSet) {
+        this.decorations = this.buildDecorations(update.view);
         metadataStore.updateLineCount(update.view.state.doc.lines);
       }
     }
@@ -64,8 +60,9 @@ export const tagPlugin: Extension = ViewPlugin.fromClass(
           if (cursorInside) continue;
     
           // Add decoration
-          builder.add(tagStart, tagEnd, Decoration.mark({ class: "cm-tag" }));
           foundTags.push({ name: tag, line: line.number, context: line });
+
+          builder.add(tagStart, tagEnd, Decoration.mark({ class: "cm-tag" }));
         }
     
         pos = line.to + 1;
