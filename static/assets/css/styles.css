@@ -18,39 +18,14 @@ main{
   height: calc(100vh - 50px); /* below topbar */
   overflow: hidden;
 }
-/* sidebar*/
-.navigation{
-  display: block;
-  height: calc(100vh - 50px); /* below topbar */
-  position: fixed;
-  top: 50px;
-  left: 0;
-  width: 250px;
-  background-color: #f4f4f4;
-  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-  z-index: 1000;
-  padding: 1rem;
-  overflow-y: auto;
-}
-.sidebar{
-  display: block;
-  height: calc(100vh - 50px); /* below topbar */
-  position: fixed;
-  top: 50px;
-  right: 0;
-  width: 250px;
-  background-color: #f4f4f4;
-  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-  z-index: 1000;
-  padding: 1rem;
-  overflow-y: auto;
-}
+
 
 /* New App Layout */
 .app {
   display: flex;
-  max-width: 80vw;
+  max-width: calc(100vw - 250px);
   margin: 0 auto;
+  width: 65vw;
 }
 
 /* Containers */
@@ -95,16 +70,8 @@ main{
   border-bottom: 1px solid #ccc;
 }
 
-.tab {
-  background: #dcdcdc;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.tab.active {
-  background: #ffffff;
-  border: 1px solid #bbb;
-}
+
+
 .tab-close {
   margin-left: 0.5rem;
   cursor: pointer;

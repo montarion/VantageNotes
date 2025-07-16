@@ -12,9 +12,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/cm.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/tabs.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/topbar.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/navbar.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/sidebar.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/search.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/transclusions.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/pane.css') }}" />
+
   </head>
 
   <body>
@@ -26,10 +29,10 @@
       <button id="sidebarToggle">Toggle Sidebar</button>
 
     </div>
-    
+    <nav class="navigation"></nav>
+
     <!-- Layout Grid -->
     <main>
-        <div class="navigation"></div>
         <div class="app"></div>
 
           <!-- Example panes; you can add/remove any panes dynamically 

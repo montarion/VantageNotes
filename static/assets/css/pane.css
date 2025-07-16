@@ -1,0 +1,37 @@
+.pane{
+    width: 100%;
+    max-width: 80ch;
+    margin: 0 auto;
+    position: relative;
+}
+
+.drag-zone {
+    position: absolute;
+    z-index: 1000;
+    display: none; /* Hidden by default */
+    pointer-events: auto; /* Ensure interaction when visible */
+  }
+  
+  .drag-zone-top,
+  .drag-zone-bottom {
+    left: 0;
+    right: 0;
+    height:5%;
+  }
+  
+  .drag-zone-left,
+  .drag-zone-right {
+    top: 0;
+    bottom: 0;
+    width: 25%;
+  }
+  
+  .drag-zone-top { top: 0; }
+  .drag-zone-bottom { bottom: 0; }
+  .drag-zone-left { left: 0; }
+  .drag-zone-right { right: 0; }
+  
+  .drag-zone-hover {
+    background: rgba(100, 150, 255, 0.2);
+  }
+  
