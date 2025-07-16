@@ -1,7 +1,8 @@
 import { 
   fetchFileTree,
   generateNavigation, 
-  getInitialFileFromURL, 
+  getInitialFileFromURL,
+  toggleSidebar, 
 } from "./navigation.ts";
 
 import { 
@@ -11,14 +12,13 @@ import {
 import { 
   hasOpenTabs, 
   initTabs, 
-  openEditorTab, 
-  setupContainerDragAndDrop,   
-  GetPane
+  openEditorTab,   
 } from "./tabs.ts";
 
 import { setupSearchHandler } from "./search.ts";
 import { Logger, Logging } from './logger.ts';
 import { shortUUID } from "./pluginhelpers.ts";
+import { GetPane } from "./pane.ts";
 
 const log = new Logger({ namespace: 'Main', minLevel: 'debug' });
 
@@ -41,7 +41,6 @@ Logging.enableAll();
 
 
   // Setup drag/drop for content container in main pane
-  setupContainerDragAndDrop("main");
 
   // Generate navigation pane/tab
   await generateNavigation();
@@ -49,6 +48,7 @@ Logging.enableAll();
   // Open initial file in main pane if any
   const initialFile = getInitialFileFromURL();
 
+  
   if (initialFile) {
     await openEditorTab({paneId:"main", filename:initialFile});
   } else if (!hasOpenTabs("main")) {

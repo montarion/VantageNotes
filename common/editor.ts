@@ -63,6 +63,7 @@ import { testHighlightPlugin } from '../cm_plugins/highlight.ts';
 // Import tab management functions
 import { getActiveTab, openEditorTab, switchToTab } from "./tabs.ts";
 import { SlashCommandPlugin, slashMenuKeymap } from '../cm_plugins/slashcommands.ts';
+import { fileLinkCompletions } from '../cm_plugins/autocomplete.ts';
 
 const EDITOR_PANE_ID = "main"; // Your main editor pane id
 
@@ -80,6 +81,7 @@ export const outsideExtensions = [
 
 // Main set of editor extensions, plugins and UI features
 export const extensions = [
+  SlashCommandPlugin,
   slashMenuKeymap,
   markdown({codeLanguages: languages}),
   tagPlugin,
@@ -92,8 +94,7 @@ export const extensions = [
   wikilinkPlugin,
   hyperlinkPlugin,
   transclusionPlugin,
-  SlashCommandPlugin,
-  
+  autocompletion({ override: [fileLinkCompletions], activateOnTyping: true }),
   EditorView.theme({
     "&": { height: "100%" }
   }),
@@ -117,6 +118,8 @@ export const extensions = [
   highlightSelectionMatches(),
   lineNumbers(),
   EditorView.lineWrapping,
+  
+
 ]
 
 // Singleton CodeMirror instance
@@ -172,7 +175,7 @@ export async function openActiveEditorTab(filename?: string) {
     return;
   }
 
-  const activeTab = getActiveTab(EDITOR_PANE_ID);
+  const activeTab = getActiveTab();
   if (activeTab) {
     switchToTab(EDITOR_PANE_ID, activeTab.id);
   } else {
