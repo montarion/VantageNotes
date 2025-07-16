@@ -14,11 +14,11 @@ breadcrumbContainer.className = "breadcrumb";
 const saveStatus = document.createElement("span");
 saveStatus.className = "save-status";
 
-document.querySelector(".navigationToggle")?.addEventListener("click", function () {
+document.querySelector("#navigationToggle")?.addEventListener("click", function () {
   log.debug("CLICKED")
   toggleNavigation()    
 })
-document.querySelector(".sidebarToggle")?.addEventListener("click", function () {
+document.querySelector("#sidebarToggle")?.addEventListener("click", function () {
   toggleSidebar()    
 })
 

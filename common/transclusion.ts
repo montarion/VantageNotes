@@ -65,7 +65,7 @@ export async function renderTransclusions(text: string): Promise<string> {
 
       rendered = rendered.replace(replaceRegex, replacement);
     } catch (e) {
-      console.warn(`Failed to fetch transclusion for ${t.target}:`, e);
+      console.error(`Failed to fetch transclusion for ${t.target}:`, e);
       // On failure, fallback: just keep original text or indicate error
       rendered = rendered.replace(t.original, `<span class="transclusion-error">Failed to load transclusion: ${t.original}</span>`);
     }
