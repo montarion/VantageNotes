@@ -5,11 +5,27 @@ import { openEditorTab } from './tabs.ts';
 const log = new Logger({ namespace: 'Metadata', minLevel: 'debug' });
 
 async function getMetadata(filename: string) {
-  const response = await loadFile(filename)
-  return extractMetadataFromText(response)
+
+  const response = await fetch(`/api/metadata/${encodeURIComponent(filename)}`);
+
+  if (!response.ok) {
+
+    log.warn(`No metadata found for ${filename}`);
+
+    return null;
+
+  }
+
+  return await response.json();
+
 }
 export function extractMetadataFromText(text: string) {
   const wikilinks = [...text.matchAll(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g)].map(m => ({
+    target: m[1],
+    alias: m[2] || null
+  }));
+
+  const transclusions = [...text.matchAll(/!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g)].map(m => ({
     target: m[1],
     alias: m[2] || null
   }));
@@ -43,6 +59,7 @@ export function extractMetadataFromText(text: string) {
 
   return {
     wikilinks,
+    transclusions,
     headers,
     tasks,
     tags,
@@ -93,6 +110,28 @@ export async function showMetadataPanel(filename: string) {
   }
 }
 
+export function buildBacklinkIndex(allMetadata: Record<string, ReturnType<typeof extractMetadataFromText>>) {
+  const backlinks: Record<string, string[]> = {};
+
+  // Initialize backlinks map
+  for (const filename in allMetadata) {
+    backlinks[filename] = [];
+  }
+
+  // Populate backlinks
+  for (const [sourceFile, meta] of Object.entries(allMetadata)) {
+    for (const transclusion of meta.transclusions || []) {
+      const target = `${transclusion.target}.md`;
+      if (backlinks[target] && !backlinks[target].includes(sourceFile)) {
+        backlinks[target].push(sourceFile);
+      }
+    }
+  }
+
+  return backlinks;
+}
+
+
 function renderMetadata(metadata: any): HTMLElement {
   const escape = (s: string) => s.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -103,6 +142,15 @@ function renderMetadata(metadata: any): HTMLElement {
     const header = document.createElement("div");
     header.className = "panel-header";
     header.textContent = `${title} (click to toggle)`;
+
+    const renderBacklinks = () => (metadata.backlinks || []).map((source: string) => {
+      const link = document.createElement("a");
+      link.href = "#";
+      link.className = "cm-wikilink";
+      link.dataset.wikilink = source.replace(/\.md$/, "");
+      link.textContent = `← ${source}`;
+      return [link, document.createElement("br")];
+    }).flat();
 
     const content = document.createElement("div");
     content.className = "panel-content";
@@ -116,6 +164,7 @@ function renderMetadata(metadata: any): HTMLElement {
         } else {
           content.appendChild(child);
         }
+        if ((metadata.backlinks || []).length) container.appendChild(createSection("Backlinks", renderBacklinks()));
       }
     }
 
@@ -129,6 +178,7 @@ function renderMetadata(metadata: any): HTMLElement {
     tag.href = "#";
     tag.className = "cm-tag";
     tag.dataset.tag = t;
+    log.error("Tag:", t)
     tag.textContent = `#${t}`;
     if (i > 0) return [document.createTextNode(", "), tag];
     return [tag];
