@@ -25,7 +25,7 @@ main{
   display: flex;
   max-width: calc(100vw - 250px);
   margin: 0 auto;
-  width: 65vw;
+  width: 80vw;
 }
 
 /* Containers */
