@@ -11,13 +11,16 @@ import { loadFile } from "../common/navigation.ts";
 export const userEvent = Annotation.define<string>();
 
 // Plugin: watches for doc changes and sends updates to server
-const collabPlugin = ViewPlugin.fromClass(class {
+export const collabPlugin = ViewPlugin.fromClass(class {
   constructor(readonly view: EditorView) {}
 
   update(update: ViewUpdate) {
-    if (!update.docChanged) return;
+    log.debug("collabPlugin update() fired", update);
 
+    if (!update.docChanged) return;
+    log.debug("Updating!")
     const sendable = sendableUpdates(update.state);
+    log.debug(sendable)
     if (sendable && sendable.updates && sendable.updates.length > 0) {
       sendUpdates(sendable.updates, getSyncedVersion(update.state));
     }
@@ -39,12 +42,6 @@ export function createCollabExtensions(startVersion: number, clientID: string): 
  */
 export function applyServerUpdates(view: EditorView, updates: any[] = [], version: number) {
     if (!view?.state) {
-        log.debug(view)
-        log.debug(view.state)
-        view.state.update({
-            changes: { from: 0, to: view.state.doc.length, insert: "THISI STEXTESJFDSOPFE" },
-            annotations: userEvent.of("full-replace"),
-          });
       console.trace("No editor state, cannot apply server updates");
       return;
     }
