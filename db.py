@@ -3,7 +3,7 @@ import sqlite3
 import json
 from fuzzywuzzy import fuzz
 
-DB_PATH = 'metadata.db'
+DB_PATH = 'storage.db'
 
 EMPTY_METADATA = {
     "tags": [],
@@ -15,9 +15,7 @@ EMPTY_METADATA = {
     "images": []
 }
 
-import sqlite3
 
-DB_PATH = 'metadata.db'
 
 def init_db(db_path=DB_PATH):
     conn = sqlite3.connect(db_path)
@@ -28,7 +26,8 @@ def init_db(db_path=DB_PATH):
         CREATE TABLE IF NOT EXISTS files (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             filename TEXT UNIQUE NOT NULL,
-            content TEXT NOT NULL
+            content TEXT NOT NULL,
+            metadata_json TEXT  -- store as JSON string
         )
     ''')
 
@@ -40,136 +39,48 @@ def init_db(db_path=DB_PATH):
         )
     ''')
 
-    # Tags table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS tags (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            file_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
-        )
-    ''')
+    
+    conn.commit()
+    conn.close()
 
-    # Headers table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS headers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            file_id INTEGER NOT NULL,
-            level INTEGER NOT NULL,
-            text TEXT NOT NULL,
-            FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
-        )
-    ''')
 
-    # Tasks table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            file_id INTEGER NOT NULL,
-            text TEXT NOT NULL,
-            checked BOOLEAN NOT NULL,
-            FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
-        )
-    ''')
+def save_file(filename, content, metadata, db_path=DB_PATH):
+    metadata_json = json.dumps(metadata)
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
 
-    # Wikilinks table
     c.execute('''
-        CREATE TABLE IF NOT EXISTS wikilinks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            file_id INTEGER NOT NULL,
-            target TEXT NOT NULL,
-            alias TEXT,
-            FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
-        )
-    ''')
+        INSERT INTO files (filename, content, metadata_json)
+        VALUES (?, ?, ?)
+        ON CONFLICT(filename) DO UPDATE SET
+            content=excluded.content,
+            metadata_json=excluded.metadata_json
+    ''', (filename, content, metadata_json))
 
-    # Hyperlinks table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS hyperlinks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            file_id INTEGER NOT NULL,
-            label TEXT,
-            url TEXT NOT NULL,
-            FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
-        )
-    ''')
-
-    # Code blocks table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS code_blocks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            file_id INTEGER NOT NULL,
-            language TEXT NOT NULL,
-            FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
-        )
-    ''')
-
-    # Images table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS images (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            file_id INTEGER NOT NULL,
-            alt_text TEXT,
-            url TEXT NOT NULL,
-            FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
-        )
-    ''')
+    # Update FTS (if still used)
+    c.execute('DELETE FROM files_fts WHERE filename=?', (filename,))
+    c.execute('INSERT INTO files_fts (filename, content) VALUES (?, ?)', (filename, content))
 
     conn.commit()
     conn.close()
 
 
-
-
 def save_file_metadata(filename, metadata, content, db_path=DB_PATH):
+    metadata_json = json.dumps(metadata)
+
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
 
-    # Insert or update file record
+    # Insert or update the file row, including metadata as JSON
     c.execute('''
-        INSERT INTO files (filename, content) VALUES (?, ?)
-        ON CONFLICT(filename) DO UPDATE SET content=excluded.content
-    ''', (filename, content))
+        INSERT INTO files (filename, content, metadata_json)
+        VALUES (?, ?, ?)
+        ON CONFLICT(filename) DO UPDATE SET
+            content=excluded.content,
+            metadata_json=excluded.metadata_json
+    ''', (filename, content, metadata_json))
 
-    # Get file_id
-    c.execute('SELECT id FROM files WHERE filename=?', (filename,))
-    file_id = c.fetchone()[0]
-
-    # Clear old metadata for this file
-    for table in ['tags', 'headers', 'tasks', 'wikilinks', 'hyperlinks', 'code_blocks', 'images']:
-        c.execute(f'DELETE FROM {table} WHERE file_id=?', (file_id,))
-
-    # Insert tags
-    for tag in metadata.get('tags', []):
-        tag_name = tag if isinstance(tag, str) else tag.get('name', '')
-        if tag_name:
-            c.execute('INSERT INTO tags (file_id, name) VALUES (?, ?)', (file_id, tag_name))
-
-    # Insert headers
-    for h in metadata.get('headers', []):
-        c.execute('INSERT INTO headers (file_id, level, text) VALUES (?, ?, ?)', (file_id, h['level'], h['text']))
-
-    # Insert tasks
-    for t in metadata.get('tasks', []):
-        c.execute('INSERT INTO tasks (file_id, text, checked) VALUES (?, ?, ?)', (file_id, t['text'], bool(t['checked'])))
-
-    # Insert wikilinks
-    for w in metadata.get('wikilinks', []):
-        c.execute('INSERT INTO wikilinks (file_id, target, alias) VALUES (?, ?, ?)', (file_id, w['target'], w.get('alias')))
-
-    # Insert hyperlinks
-    for l in metadata.get('hyperlinks', []):
-        c.execute('INSERT INTO hyperlinks (file_id, label, url) VALUES (?, ?, ?)', (file_id, l.get('label'), l['url']))
-
-    # Insert code blocks
-    for cb in metadata.get('code_blocks', []):
-        c.execute('INSERT INTO code_blocks (file_id, language) VALUES (?, ?)', (file_id, cb.get('language', 'plain')))
-
-    # Insert images
-    for img in metadata.get('images', []):
-        c.execute('INSERT INTO images (file_id, alt_text, url) VALUES (?, ?, ?)', (file_id, img.get('alt_text'), img['url']))
-
-    # Update FTS table (delete old first)
+    # Update FTS index
     c.execute('DELETE FROM files_fts WHERE filename=?', (filename,))
     c.execute('INSERT INTO files_fts (filename, content) VALUES (?, ?)', (filename, content))
 
@@ -184,40 +95,15 @@ def get_metadata(filename, db_path=DB_PATH):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
 
-    c.execute('SELECT id FROM files WHERE filename=?', (filename,))
+    c.execute('SELECT metadata_json FROM files WHERE filename=?', (filename,))
     row = c.fetchone()
-    if not row:
-        conn.close()
-        return EMPTY_METADATA
-
-    file_id = row[0]
-
-    def fetchall_dict(query, params):
-        c.execute(query, params)
-        cols = [desc[0] for desc in c.description]
-        return [dict(zip(cols, row)) for row in c.fetchall()]
-
-    # Note: Changed 'tag' to 'name' to reflect schema
-    tags = [r['name'] for r in fetchall_dict('SELECT name FROM tags WHERE file_id=?', (file_id,))]
-    headers = fetchall_dict('SELECT level, text FROM headers WHERE file_id=?', (file_id,))
-    tasks = fetchall_dict('SELECT text, checked FROM tasks WHERE file_id=?', (file_id,))
-    wikilinks = fetchall_dict('SELECT target, alias FROM wikilinks WHERE file_id=?', (file_id,))
-    hyperlinks = fetchall_dict('SELECT label, url FROM hyperlinks WHERE file_id=?', (file_id,))
-    code_blocks = fetchall_dict('SELECT language FROM code_blocks WHERE file_id=?', (file_id,))
-    images = fetchall_dict('SELECT alt_text, url FROM images WHERE file_id=?', (file_id,))
-
     conn.close()
 
-    metadata =  {
-        'tags': tags,
-        'headers': headers,
-        'tasks': tasks,
-        'wikilinks': wikilinks,
-        'hyperlinks': hyperlinks,
-        'code_blocks': code_blocks,
-        'images': images
-    }
-    return metadata
+    if row and row[0]:
+        return json.loads(row[0])
+    else:
+        return EMPTY_METADATA
+
 
 
 
@@ -371,7 +257,6 @@ def load_all_notes(notes_dir, db_path=DB_PATH, parser=None):
                 try:
                     metadata_obj, content = parser(path)
                     rel_path = os.path.relpath(path, notes_dir)
-
                     save_file_metadata(rel_path, metadata_obj, content, db_path)
                 except Exception as e:
                     print(f"Error parsing {path}: {e}")
