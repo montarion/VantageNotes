@@ -18,29 +18,28 @@ import {
 // Language-related features
 import {
   defaultHighlightStyle, syntaxHighlighting, indentOnInput,
-  bracketMatching, foldGutter, foldKeymap
+  bracketMatching
 } from "npm:@codemirror/language"
 
 // Editing history and keymaps
 import {
-  defaultKeymap, history, historyKeymap, indentWithTab
+  defaultKeymap, history, indentWithTab
 } from "npm:@codemirror/commands"
 
 // Search functionality
 import {
-  searchKeymap, highlightSelectionMatches
+  highlightSelectionMatches
 } from "npm:@codemirror/search"
 
 // Autocomplete and bracket closing
 import {
-  autocompletion, completionKeymap, closeBrackets,
-  closeBracketsKeymap
+  autocompletion, closeBrackets
 } from "npm:@codemirror/autocomplete"
 
 import { EditorState } from "npm:@codemirror/state";
 
 // File saving and content loading
-import { loadFile, saveFile } from "./navigation.ts"
+import { saveFile } from "./navigation.ts"
 
 // Language setup
 import { markdown } from "npm:@codemirror/lang-markdown";
@@ -58,7 +57,6 @@ import { createAutoSavePlugin } from "../cm_plugins/autosave.ts";
 import { wikilinkPlugin } from "../cm_plugins/wikilinks.ts";
 import { hyperlinkPlugin } from "../cm_plugins/hyperlinks.ts";
 import { transclusionPlugin, transclusionActiveField} from "../cm_plugins/transclusions.ts";
-import { testHighlightPlugin } from '../cm_plugins/highlight.ts';
 
 // Import tab management functions
 import { getActiveTab, openEditorTab, switchToTab } from "./tabs.ts";
@@ -66,16 +64,14 @@ import { SlashCommandPlugin, slashMenuKeymap } from '../cm_plugins/slashcommands
 import { fileLinkCompletions } from '../cm_plugins/autocomplete.ts';
 import { tabDropToTransclusion } from '../cm_plugins/tabdropTransclusion.ts';
 // collaboration functions
-import { applyServerUpdates, createCollabExtensions } from '../cm_plugins/collaboration.ts';
+import { collabPlugin } from '../cm_plugins/collaboration.ts';
+import { collab } from "npm:@codemirror/collab";
 
-import { connectSocket, getUserID, initSocket, sendUpdates } from './websockets.ts';
-import { shortUUID } from './pluginhelpers.ts';
+import { getUserID} from './websockets.ts';
 
 const EDITOR_PANE_ID = "main"; // Your main editor pane id
 
-// Editor configuration state
-let filename = "test";
-let saveTimeout;
+
 
 const log = new Logger({ namespace: 'Editor', minLevel: 'debug' });
 
@@ -150,7 +146,8 @@ export function newEditor(container: HTMLElement, options?: { collabMode?: boole
   const state = EditorState.create({
     doc: "",
     extensions: [
-      ...createCollabExtensions(startVersion, userID),
+      collab({ startVersion, clientID:userID }),
+      collabPlugin,
       ...extensions,
       ...outsideExtensions
     ]
