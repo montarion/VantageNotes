@@ -5152,13 +5152,13 @@ function applyDOMChange(view, domChange) {
   if (change) {
     return applyDOMChangeInner(view, change, newSel, lastKey);
   } else if (newSel && !newSel.main.eq(sel)) {
-    let scrollIntoView3 = false, userEvent = "select";
+    let scrollIntoView3 = false, userEvent2 = "select";
     if (view.inputState.lastSelectionTime > Date.now() - 50) {
       if (view.inputState.lastSelectionOrigin == "select")
         scrollIntoView3 = true;
-      userEvent = view.inputState.lastSelectionOrigin;
+      userEvent2 = view.inputState.lastSelectionOrigin;
     }
-    view.dispatch({ selection: newSel, scrollIntoView: scrollIntoView3, userEvent });
+    view.dispatch({ selection: newSel, scrollIntoView: scrollIntoView3, userEvent: userEvent2 });
     return true;
   } else {
     return false;
@@ -5223,16 +5223,16 @@ function applyDefaultInsert(view, change, newSel) {
       };
     }
   }
-  let userEvent = "input.type";
+  let userEvent2 = "input.type";
   if (view.composing || view.inputState.compositionPendingChange && view.inputState.compositionEndedAt > Date.now() - 50) {
     view.inputState.compositionPendingChange = false;
-    userEvent += ".compose";
+    userEvent2 += ".compose";
     if (view.inputState.compositionFirstChange) {
-      userEvent += ".start";
+      userEvent2 += ".start";
       view.inputState.compositionFirstChange = false;
     }
   }
-  return startState2.update(tr, { userEvent, scrollIntoView: true });
+  return startState2.update(tr, { userEvent: userEvent2, scrollIntoView: true });
 }
 function findDiff(a2, b, preferredPos, preferredSide) {
   let minLen = Math.min(a2.length, b.length);
@@ -59057,44 +59057,12 @@ function showSaveStatus(status) {
 // common/metadatapanel.ts
 var log3 = new Logger({ namespace: "Metadata", minLevel: "debug" });
 async function getMetadata(filename) {
-  const response = await loadFile(filename);
-  return extractMetadataFromText(response);
-}
-function extractMetadataFromText(text4) {
-  const wikilinks = [...text4.matchAll(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g)].map((m) => ({
-    target: m[1],
-    alias: m[2] || null
-  }));
-  const headers2 = [...text4.matchAll(/^(#{1,6})\s+(.*)/gm)].map((m) => ({
-    level: m[1].length,
-    text: m[2]
-  }));
-  const tasks = [...text4.matchAll(/^[-*] \[( |x|X)\] (.+)/gm)].map((m) => ({
-    checked: m[1].toLowerCase() === "x",
-    text: m[2]
-  }));
-  const tags3 = [...new Set([...text4.matchAll(/#(\w+)/g)].map((m) => m[1]))];
-  const hyperlinks = [...text4.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)].map((m) => ({
-    label: m[1],
-    url: m[2]
-  }));
-  const code_blocks = [...text4.matchAll(/```(\w+)?\n([\s\S]*?)```/g)].map((m) => ({
-    language: m[1] || "plain",
-    code: m[2]
-  }));
-  const images = [...text4.matchAll(/!\[(.*?)\]\((.*?)\)/g)].map((m) => ({
-    alt_text: m[1],
-    url: m[2]
-  }));
-  return {
-    wikilinks,
-    headers: headers2,
-    tasks,
-    tags: tags3,
-    hyperlinks,
-    code_blocks,
-    images
-  };
+  const response = await fetch(`/api/metadata/${encodeURIComponent(filename)}`);
+  if (!response.ok) {
+    log3.warn(`No metadata found for ${filename}`);
+    return null;
+  }
+  return await response.json();
 }
 async function showMetadataPanel(filename) {
   const sidebar = document.querySelector(".sidebar");
@@ -59140,6 +59108,14 @@ function renderMetadata(metadata) {
     const header3 = document.createElement("div");
     header3.className = "panel-header";
     header3.textContent = `${title} (click to toggle)`;
+    const renderBacklinks = () => (metadata.backlinks || []).map((source) => {
+      const link = document.createElement("a");
+      link.href = "#";
+      link.className = "cm-wikilink";
+      link.dataset.wikilink = source.replace(/\.md$/, "");
+      link.textContent = `\u2190 ${source}`;
+      return [link, document.createElement("br")];
+    }).flat();
     const content3 = document.createElement("div");
     content3.className = "panel-content";
     if (children.length === 0) {
@@ -59151,6 +59127,8 @@ function renderMetadata(metadata) {
         } else {
           content3.appendChild(child);
         }
+        if ((metadata.backlinks || []).length)
+          container.appendChild(createSection("Backlinks", renderBacklinks()));
       }
     }
     section2.appendChild(header3);
@@ -59162,6 +59140,7 @@ function renderMetadata(metadata) {
     tag2.href = "#";
     tag2.className = "cm-tag";
     tag2.dataset.tag = t2;
+    log3.error("Tag:", t2);
     tag2.textContent = `#${t2}`;
     if (i > 0)
       return [document.createTextNode(", "), tag2];
@@ -59643,11 +59622,11 @@ var historyField_ = /* @__PURE__ */ StateField.define({
     if (tr.annotation(Transaction.addToHistory) === false)
       return !tr.changes.empty ? state.addMapping(tr.changes.desc) : state;
     let event = HistEvent.fromTransaction(tr);
-    let time = tr.annotation(Transaction.time), userEvent = tr.annotation(Transaction.userEvent);
+    let time = tr.annotation(Transaction.time), userEvent2 = tr.annotation(Transaction.userEvent);
     if (event)
-      state = state.addChanges(event, time, userEvent, config2, tr);
+      state = state.addChanges(event, time, userEvent2, config2, tr);
     else if (tr.selection)
-      state = state.addSelection(tr.startState.selection, time, userEvent, config2.newGroupDelay);
+      state = state.addSelection(tr.startState.selection, time, userEvent2, config2.newGroupDelay);
     if (isolate == "full" || isolate == "after")
       state = state.isolate();
     return state;
@@ -59812,21 +59791,21 @@ var HistoryState = class _HistoryState {
   isolate() {
     return this.prevTime ? new _HistoryState(this.done, this.undone) : this;
   }
-  addChanges(event, time, userEvent, config2, tr) {
+  addChanges(event, time, userEvent2, config2, tr) {
     let done = this.done, lastEvent = done[done.length - 1];
-    if (lastEvent && lastEvent.changes && !lastEvent.changes.empty && event.changes && (!userEvent || joinableUserEvent.test(userEvent)) && (!lastEvent.selectionsAfter.length && time - this.prevTime < config2.newGroupDelay && config2.joinToEvent(tr, isAdjacent(lastEvent.changes, event.changes)) || // For compose (but not compose.start) events, always join with previous event
-    userEvent == "input.type.compose")) {
+    if (lastEvent && lastEvent.changes && !lastEvent.changes.empty && event.changes && (!userEvent2 || joinableUserEvent.test(userEvent2)) && (!lastEvent.selectionsAfter.length && time - this.prevTime < config2.newGroupDelay && config2.joinToEvent(tr, isAdjacent(lastEvent.changes, event.changes)) || // For compose (but not compose.start) events, always join with previous event
+    userEvent2 == "input.type.compose")) {
       done = updateBranch(done, done.length - 1, config2.minDepth, new HistEvent(event.changes.compose(lastEvent.changes), conc(StateEffect.mapEffects(event.effects, lastEvent.changes), lastEvent.effects), lastEvent.mapped, lastEvent.startSelection, none2));
     } else {
       done = updateBranch(done, done.length, config2.minDepth, event);
     }
-    return new _HistoryState(done, none2, time, userEvent);
+    return new _HistoryState(done, none2, time, userEvent2);
   }
-  addSelection(selection, time, userEvent, newGroupDelay) {
+  addSelection(selection, time, userEvent2, newGroupDelay) {
     let last = this.done.length ? this.done[this.done.length - 1].selectionsAfter : none2;
-    if (last.length > 0 && time - this.prevTime < newGroupDelay && userEvent == this.prevUserEvent && userEvent && /^select($|\.)/.test(userEvent) && eqSelectionShape(last[last.length - 1], selection))
+    if (last.length > 0 && time - this.prevTime < newGroupDelay && userEvent2 == this.prevUserEvent && userEvent2 && /^select($|\.)/.test(userEvent2) && eqSelectionShape(last[last.length - 1], selection))
       return this;
-    return new _HistoryState(addSelection(this.done, selection), this.undone, time, userEvent);
+    return new _HistoryState(addSelection(this.done, selection), this.undone, time, userEvent2);
   }
   addMapping(mapping) {
     return new _HistoryState(addMappingToBranch(this.done, mapping), addMappingToBranch(this.undone, mapping), this.prevTime, this.prevUserEvent);
@@ -63224,8 +63203,315 @@ function fileLinkCompletions(context) {
   };
 }
 
+// cm_plugins/tabdropTransclusion.ts
+init_dist2();
+var log16 = new Logger({ namespace: "TabdropTransclusions", minLevel: "debug" });
+function handleTabDrop(view, event) {
+  const data2 = event.dataTransfer?.getData("text/plain");
+  if (!data2)
+    return false;
+  try {
+    const parsed = JSON.parse(data2);
+    if (parsed.tabId && parsed.fromPane) {
+      event.preventDefault();
+      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY })?.pos;
+      if (pos == null)
+        return false;
+      const transclusionString = `![[${parsed.filename}]]`;
+      view.dispatch({
+        changes: {
+          from: pos,
+          to: pos,
+          insert: transclusionString
+        }
+      });
+      return true;
+    }
+  } catch (_) {
+  }
+  return false;
+}
+var tabDropToTransclusion = EditorView.domEventHandlers({
+  drop: (event, view) => handleTabDrop(view, event)
+});
+
+// cm_plugins/collaboration.ts
+init_dist2();
+
+// ../../.cache/deno/deno_esbuild/@codemirror/collab@6.1.1/node_modules/@codemirror/collab/dist/index.js
+init_dist();
+var LocalUpdate = class {
+  constructor(origin, changes, effects, clientID) {
+    this.origin = origin;
+    this.changes = changes;
+    this.effects = effects;
+    this.clientID = clientID;
+  }
+};
+var CollabState = class {
+  constructor(version, unconfirmed) {
+    this.version = version;
+    this.unconfirmed = unconfirmed;
+  }
+};
+var collabConfig = /* @__PURE__ */ Facet.define({
+  combine(configs) {
+    let combined = combineConfig(configs, { startVersion: 0, clientID: null, sharedEffects: () => [] }, {
+      generatedID: (a2) => a2
+    });
+    if (combined.clientID == null)
+      combined.clientID = configs.length && configs[0].generatedID || "";
+    return combined;
+  }
+});
+var collabReceive = /* @__PURE__ */ Annotation.define();
+var collabField = /* @__PURE__ */ StateField.define({
+  create(state) {
+    return new CollabState(state.facet(collabConfig).startVersion, []);
+  },
+  update(collab2, tr) {
+    let isSync = tr.annotation(collabReceive);
+    if (isSync)
+      return isSync;
+    let { sharedEffects, clientID } = tr.startState.facet(collabConfig);
+    let effects = sharedEffects(tr);
+    if (effects.length || !tr.changes.empty)
+      return new CollabState(collab2.version, collab2.unconfirmed.concat(new LocalUpdate(tr, tr.changes, effects, clientID)));
+    return collab2;
+  }
+});
+function collab(config2 = {}) {
+  return [collabField, collabConfig.of(Object.assign({ generatedID: Math.floor(Math.random() * 1e9).toString(36) }, config2))];
+}
+function receiveUpdates(state, updates) {
+  let { version, unconfirmed } = state.field(collabField);
+  let { clientID } = state.facet(collabConfig);
+  version += updates.length;
+  let effects = [], changes = null;
+  let own = 0;
+  for (let update of updates) {
+    let ours = own < unconfirmed.length ? unconfirmed[own] : null;
+    if (ours && ours.clientID == update.clientID) {
+      if (changes)
+        changes = changes.map(ours.changes, true);
+      effects = StateEffect.mapEffects(effects, update.changes);
+      own++;
+    } else {
+      effects = StateEffect.mapEffects(effects, update.changes);
+      if (update.effects)
+        effects = effects.concat(update.effects);
+      changes = changes ? changes.compose(update.changes) : update.changes;
+    }
+  }
+  if (own)
+    unconfirmed = unconfirmed.slice(own);
+  if (unconfirmed.length) {
+    if (changes)
+      unconfirmed = unconfirmed.map((update) => {
+        let updateChanges = update.changes.map(changes);
+        changes = changes.map(update.changes, true);
+        return new LocalUpdate(update.origin, updateChanges, StateEffect.mapEffects(update.effects, changes), clientID);
+      });
+    if (effects.length) {
+      let composed = unconfirmed.reduce((ch2, u2) => ch2.compose(u2.changes), ChangeSet.empty(unconfirmed[0].changes.length));
+      effects = StateEffect.mapEffects(effects, composed);
+    }
+  }
+  if (!changes)
+    return state.update({ annotations: [collabReceive.of(new CollabState(version, unconfirmed))] });
+  return state.update({
+    changes,
+    effects,
+    annotations: [
+      Transaction.addToHistory.of(false),
+      Transaction.remote.of(true),
+      collabReceive.of(new CollabState(version, unconfirmed))
+    ],
+    filter: false
+  });
+}
+function sendableUpdates(state) {
+  return state.field(collabField).unconfirmed;
+}
+function getSyncedVersion(state) {
+  return state.field(collabField).version;
+}
+
+// cm_plugins/collaboration.ts
+init_dist();
+
+// common/websockets.ts
+var linkedView = null;
+var log17 = new Logger({ namespace: "Websockets", minLevel: "debug" });
+var socket = null;
+var docID2;
+var userID;
+var syncedVersion = 0;
+var resolveInit = null;
+var pendingUpdateHandlers = [];
+var bufferedInit = null;
+function linkEditorView(view) {
+  log17.debug("LINKING EDITOR TO SOCKET: ", view);
+  linkedView = view.view;
+  if (bufferedInit) {
+    setTimeout(() => {
+      if (linkedView) {
+        applyServerUpdates(linkedView, bufferedInit.updates, bufferedInit.version);
+        bufferedInit = null;
+      }
+    }, 0);
+  }
+}
+function connectSocket(documentId, userId) {
+  docID2 = documentId;
+  userID = userId;
+  const url = new URL(`ws://${location.hostname}:${location.port}/ws`);
+  url.searchParams.append("doc", encodeURIComponent(docID2));
+  url.searchParams.append("user", encodeURIComponent(userID));
+  socket = new WebSocket(url);
+  const initPromise = new Promise((resolve) => {
+    resolveInit = resolve;
+  });
+  socket.onopen = () => {
+    console.log("\u{1F50C} WebSocket connected");
+  };
+  socket.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    switch (msg.type) {
+      case "init":
+        syncedVersion = msg.version;
+        log17.info("\u{1F4E5} Initial sync, version", msg.version);
+        if (linkedView) {
+          log17.debug("69", linkedView);
+          applyServerUpdates(linkedView, msg.updates, msg.version);
+        } else {
+          bufferedInit = { updates: msg.updates, version: msg.version };
+        }
+        resolveInit?.({ updates: msg.updates, version: msg.version });
+        resolveInit = null;
+        break;
+      case "updates":
+        syncedVersion = msg.version;
+        log17.info("\u{1F4E5} Received updates at version", msg.version);
+        if (linkedView) {
+          linkedView.dispatch(
+            receiveUpdates(linkedView.state, msg.updates, msg.version)
+          );
+        }
+        for (const handler of pendingUpdateHandlers) {
+          handler(msg.updates, msg.version);
+        }
+        break;
+      default:
+        console.warn("\u26A0\uFE0F Unknown message type:", msg.type);
+    }
+  };
+  socket.onclose = () => {
+    console.warn("\u{1F50C} WebSocket closed. Reconnecting in 3s...");
+    setTimeout(() => connectSocket(docID2, userID), 3e3);
+  };
+  socket.onerror = (err) => {
+    console.error("WebSocket error:", err);
+  };
+  return initPromise;
+}
+async function switchDocument(newDocId) {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    throw new Error("WebSocket not connected");
+  }
+  log17.debug("Switching to new document: ", newDocId);
+  docID2 = newDocId;
+  syncedVersion = 0;
+  bufferedInit = null;
+  const initPromise = new Promise((resolve) => {
+    resolveInit = resolve;
+  });
+  socket.send(JSON.stringify({
+    type: "switchDoc",
+    doc: newDocId
+  }));
+  const initData = await initPromise;
+  if (linkedView) {
+    log17.debug(linkedView);
+    applyServerUpdates(linkedView, initData.updates, initData.version);
+  } else {
+    bufferedInit = initData;
+  }
+  return initData;
+}
+function sendUpdates(changes, version) {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    console.warn("WebSocket not open. Cannot send updates.");
+    return;
+  }
+  const message = {
+    type: "updates",
+    version,
+    updates: changes.map((change) => change.toJSON())
+  };
+  socket.send(JSON.stringify(message));
+}
+function getUserID() {
+  let id3 = localStorage.getItem("USERID");
+  if (!id3) {
+    id3 = shortUUID(6);
+    localStorage.setItem("USERID", id3);
+  }
+  return id3;
+}
+
+// cm_plugins/collaboration.ts
+var log18 = new Logger({ namespace: "Collaboration", minLevel: "debug" });
+var userEvent = Annotation.define();
+var collabPlugin = ViewPlugin.fromClass(class {
+  constructor(view) {
+    this.view = view;
+  }
+  update(update) {
+    if (!update.docChanged)
+      return;
+    const sendable = sendableUpdates(update.state);
+    if (sendable && sendable.updates && sendable.updates.length > 0) {
+      sendUpdates(sendable.updates, getSyncedVersion(update.state));
+    }
+  }
+});
+function createCollabExtensions(startVersion, clientID) {
+  return [
+    collab({ startVersion, clientID }),
+    collabPlugin
+  ];
+}
+function applyServerUpdates(view, updates = [], version) {
+  if (!view?.state) {
+    log18.debug(view);
+    log18.debug(view.state);
+    view.state.update({
+      changes: { from: 0, to: view.state.doc.length, insert: "THISI STEXTESJFDSOPFE" },
+      annotations: userEvent.of("full-replace")
+    });
+    console.trace("No editor state, cannot apply server updates");
+    return;
+  }
+  if (!updates) {
+    console.warn("No updates provided, skipping applyServerUpdates");
+    return;
+  }
+  if (updates.length === 1 && updates[0]?.type === "full-replace" && typeof updates[0].content === "string") {
+    const fullText = updates[0].content;
+    const transaction = view.state.update({
+      changes: { from: 0, to: view.state.doc.length, insert: fullText },
+      annotations: userEvent.of("full-replace")
+    });
+    view.dispatch(transaction);
+    return;
+  }
+  const tr = receiveUpdates(view.state, updates, version);
+  view.dispatch(tr);
+}
+
 // common/editor.ts
-var log16 = new Logger({ namespace: "Editor", minLevel: "debug" });
+var log19 = new Logger({ namespace: "Editor", minLevel: "debug" });
 var outsideExtensions = [
   transclusionActiveField,
   createAutoSavePlugin(saveFile, 500)
@@ -63244,6 +63530,7 @@ var extensions = [
   wikilinkPlugin,
   hyperlinkPlugin,
   transclusionPlugin,
+  tabDropToTransclusion,
   autocompletion({ override: [fileLinkCompletions], activateOnTyping: true }),
   EditorView.theme({
     "&": { height: "100%" }
@@ -63271,10 +63558,13 @@ var extensions = [
   lineNumbers(),
   EditorView.lineWrapping
 ];
-function newEditor(container) {
+function newEditor(container, options) {
+  const userID2 = getUserID();
+  const startVersion = 0;
   const state = EditorState.create({
     doc: "",
     extensions: [
+      ...createCollabExtensions(startVersion, userID2),
       ...extensions,
       ...outsideExtensions
     ]
@@ -63296,7 +63586,7 @@ function newEditor(container) {
 }
 
 // common/pane.ts
-var log17 = new Logger({ namespace: "Pane", minLevel: "debug" });
+var log20 = new Logger({ namespace: "Pane", minLevel: "debug" });
 var panes = /* @__PURE__ */ new Map();
 var allDragZones = /* @__PURE__ */ new Set();
 function GetPane(paneId) {
@@ -63317,7 +63607,9 @@ function GetPane(paneId) {
   tabContent.dataset.pane = paneId;
   paneEl.append(tabBar, tabContent);
   document.querySelector(".app")?.append(paneEl);
-  const editor = newEditor(tabContent);
+  let editorOpts = { collabMode: true };
+  const editor = newEditor(tabContent, editorOpts);
+  linkEditorView(editor);
   const paneObj = {
     id: paneId,
     tabs: /* @__PURE__ */ new Map(),
@@ -63350,15 +63642,15 @@ function setActivePane(paneId) {
 function removePane(paneId) {
   const pane = panes.get(paneId);
   if (!pane) {
-    log17.warn(`No pane found with ID ${paneId}`);
+    log20.warn(`No pane found with ID ${paneId}`);
     return;
   }
   const el = document.querySelector(`.pane[data-pane="${paneId}"]`);
   if (el) {
     el.remove();
-    log17.debug(`Removed pane DOM element for ${paneId}`);
+    log20.debug(`Removed pane DOM element for ${paneId}`);
   } else {
-    log17.warn(`Could not find pane DOM element for ${paneId}`);
+    log20.warn(`Could not find pane DOM element for ${paneId}`);
   }
   for (const zone of Array.from(allDragZones)) {
     if (zone.dataset.paneId === paneId) {
@@ -63378,15 +63670,15 @@ function removePane(paneId) {
   if (remainingPaneIds.length === 0) {
     const newPane = GetPane();
     setActivePane(newPane.id);
-    log17.debug(`All panes removed \u2014 created new pane: ${newPane.id}`);
+    log20.debug(`All panes removed \u2014 created new pane: ${newPane.id}`);
   }
-  log17.debug(`Pane ${paneId} fully removed.`);
+  log20.debug(`Pane ${paneId} fully removed.`);
 }
 function setupPaneDragZones(paneEl, paneId) {
   if (paneEl.querySelector(".drag-zone"))
     return;
   const sides = ["right"];
-  log17.debug("Setting up pane drag zones!");
+  log20.debug("Setting up pane drag zones!");
   const zones = [];
   for (const side of sides) {
     const zone = document.createElement("div");
@@ -63404,7 +63696,7 @@ function setupPaneDragZones(paneEl, paneId) {
       e.preventDefault();
       zone.classList.remove("drag-zone-hover");
       const data2 = e.dataTransfer?.getData("text/plain");
-      log17.warn(`Dropped tab!`, data2);
+      log20.warn(`Dropped tab!`, data2);
       if (!data2)
         return;
       const { tabId, fromPane } = JSON.parse(data2);
@@ -63418,13 +63710,13 @@ function setupPaneDragZones(paneEl, paneId) {
   return zones;
 }
 function handleTabDropToNewPane(fromPaneId, tabId, toPaneId) {
-  log17.debug("INSIDE HANDLETABDROPTONEWPANE");
+  log20.debug("INSIDE HANDLETABDROPTONEWPANE");
   const fromPane = GetPane(fromPaneId);
   if (fromPaneId === toPaneId && fromPane.tabs.has(tabId))
     return;
   const toPane = GetPane(toPaneId);
   const newPane = toPane;
-  log17.debug("Tabs in old pane before removal", Array.from(fromPane.tabs.keys()));
+  log20.debug("Tabs in old pane before removal", Array.from(fromPane.tabs.keys()));
   const tab3 = fromPane.tabs.get(tabId);
   if (tab3) {
     fromPane.tabs.delete(tabId);
@@ -63432,7 +63724,7 @@ function handleTabDropToNewPane(fromPaneId, tabId, toPaneId) {
     newPane.activeTabId = tabId;
     switchToTab(newPane.id, tabId);
   }
-  log17.debug("Tabs in old pane after removal", Array.from(fromPane.tabs.keys()));
+  log20.debug("Tabs in old pane after removal", Array.from(fromPane.tabs.keys()));
   const remainingTabs = Array.from(fromPane.tabs.keys());
   if (remainingTabs.length > 0) {
     renderTabsUI(fromPaneId);
@@ -63464,12 +63756,12 @@ document.addEventListener("drop", () => {
 });
 
 // common/tabs.ts
-var log18 = new Logger({ namespace: "Tabs", minLevel: "debug" });
+var log21 = new Logger({ namespace: "Tabs", minLevel: "debug" });
 var STORAGE_ACTIVE = "ActiveTab";
 var allTabs = /* @__PURE__ */ new Map();
 var tabContentsByPane = /* @__PURE__ */ new Map();
 async function initTabs() {
-  log18.info("Initializing tabs...");
+  log21.info("Initializing tabs...");
   GetPane("main");
 }
 function createTab({
@@ -63496,7 +63788,7 @@ function createTab({
   }
   const tab3 = { id: tabId, title, contentEl, isEditor };
   allTabs.set(tabId, tab3);
-  log18.debug("list of tabs: ", allTabs);
+  log21.debug("list of tabs: ", allTabs);
   pane.tabs.set(tabId, tab3);
   renderTabsUI(paneId);
   return tab3;
@@ -63507,8 +63799,8 @@ function switchToTab(paneId, tabId) {
   if (!tab3)
     return;
   pane.activeTabId = tabId;
-  if (tab3.isEditor && pane.editorInstance) {
-    pane.editorInstance.setValue(tab3.contentEl.textContent || "");
+  if (tab3.isEditor) {
+    switchDocument(tab3.title);
   } else {
     pane.contentEl.innerHTML = "";
     pane.contentEl.append(tab3.contentEl);
@@ -63520,19 +63812,19 @@ function switchToTab(paneId, tabId) {
   renderTabsUI(paneId);
 }
 function closeTab(paneId, tabId) {
-  log18.debug("inside closetab");
+  log21.debug("inside closetab");
   const pane = GetPane(paneId);
   const tabBar = pane.tabBarEl;
   const paneTabs = pane.tabs;
   const contentContainer = pane.contentEl;
-  log18.debug("tabBar", tabBar);
-  log18.debug("panetabs", paneTabs);
-  log18.debug("allTabs:", allTabs);
+  log21.debug("tabBar", tabBar);
+  log21.debug("panetabs", paneTabs);
+  log21.debug("allTabs:", allTabs);
   if (!paneTabs || !allTabs || !tabBar)
     return;
   paneTabs?.delete(tabId);
   allTabs.delete(tabId);
-  log18.debug("Removing tab: ", tabId);
+  log21.debug("Removing tab: ", tabId);
   const tabButton = tabBar.querySelector(`[data-tab-id="${tabId}"]`);
   if (tabButton)
     tabButton.remove();
@@ -63560,16 +63852,18 @@ function renderTabsUI(paneId) {
   const pane = GetPane(paneId);
   let tabBar = pane.tabBarEl;
   tabBar.innerHTML = "";
-  log18.debug("pane.tabs:", pane.tabs);
+  log21.debug("pane.tabs:", pane.tabs);
   for (const [tabId, tab3] of pane.tabs) {
     const tabEl = document.createElement("div");
     tabEl.className = "tab";
     tabEl.dataset.id = tabId;
     tabEl.draggable = true;
+    const filename = tab3.title;
     tabEl.addEventListener("dragstart", (e) => {
       e.dataTransfer?.setData("text/plain", JSON.stringify({
         tabId,
-        fromPane: paneId
+        fromPane: paneId,
+        filename
       }));
       e.dataTransfer?.setDragImage(tabEl, 0, 0);
     });
@@ -63603,7 +63897,7 @@ function renderTabsUI(paneId) {
   }
 }
 function saveTabs() {
-  log18.debug("trying to save tabs!");
+  log21.debug("trying to save tabs!");
 }
 function reorderTabs(fromPane, draggedId, toPane, targetId) {
   if (draggedId === targetId && fromPane === toPane)
@@ -63666,13 +63960,14 @@ function setActiveTab(id3) {
 function setupDragAndDrop(tabBar, paneId) {
   tabBar.querySelectorAll(".tab").forEach((tabEl) => {
     const tabId = tabEl.getAttribute("data-id");
+    const tab3 = allTabs.get(tabId);
     if (!tabId)
       return;
     tabEl.setAttribute("draggable", "true");
     tabEl.addEventListener("dragstart", (e) => {
       e.dataTransfer?.setData(
         "application/json",
-        JSON.stringify({ tabId, fromPane: paneId })
+        JSON.stringify({ tabId, fromPane: paneId, filename: tab3?.title })
       );
       e.dataTransfer.effectAllowed = "move";
     });
@@ -63688,10 +63983,10 @@ function setupDragAndDrop(tabBar, paneId) {
   });
   tabBar.addEventListener("drop", (e) => {
     tabBar.classList.remove("drag-over");
-    log18.warn("DROPPED TAB ON TABBAR");
+    log21.warn("DROPPED TAB ON TABBAR");
     e.preventDefault();
     const data2 = e.dataTransfer?.getData("text/plain");
-    log18.warn("tabdata:", data2);
+    log21.warn("tabdata:", data2);
     if (!data2)
       return;
     const { tabId: draggedId, fromPane } = JSON.parse(data2);
@@ -64114,7 +64409,7 @@ function convertMaskToIndices(matchmask = [], minMatchCharLength = Config.minMat
 }
 var MAX_BITS = 32;
 function search(text4, pattern, patternAlphabet, {
-  location = Config.location,
+  location: location2 = Config.location,
   distance = Config.distance,
   threshold = Config.threshold,
   findAllMatches = Config.findAllMatches,
@@ -64127,7 +64422,7 @@ function search(text4, pattern, patternAlphabet, {
   }
   const patternLen = pattern.length;
   const textLen = text4.length;
-  const expectedLocation = Math.max(0, Math.min(location, textLen));
+  const expectedLocation = Math.max(0, Math.min(location2, textLen));
   let currentThreshold = threshold;
   let bestLocation = expectedLocation;
   const computeMatches = minMatchCharLength > 1 || includeMatches;
@@ -64244,7 +64539,7 @@ function createPatternAlphabet(pattern) {
 var stripDiacritics = String.prototype.normalize ? (str) => str.normalize("NFD").replace(/[\u0300-\u036F\u0483-\u0489\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u0711\u0730-\u074A\u07A6-\u07B0\u07EB-\u07F3\u07FD\u0816-\u0819\u081B-\u0823\u0825-\u0827\u0829-\u082D\u0859-\u085B\u08D3-\u08E1\u08E3-\u0903\u093A-\u093C\u093E-\u094F\u0951-\u0957\u0962\u0963\u0981-\u0983\u09BC\u09BE-\u09C4\u09C7\u09C8\u09CB-\u09CD\u09D7\u09E2\u09E3\u09FE\u0A01-\u0A03\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A70\u0A71\u0A75\u0A81-\u0A83\u0ABC\u0ABE-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AE2\u0AE3\u0AFA-\u0AFF\u0B01-\u0B03\u0B3C\u0B3E-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B62\u0B63\u0B82\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD7\u0C00-\u0C04\u0C3E-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C62\u0C63\u0C81-\u0C83\u0CBC\u0CBE-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CE2\u0CE3\u0D00-\u0D03\u0D3B\u0D3C\u0D3E-\u0D44\u0D46-\u0D48\u0D4A-\u0D4D\u0D57\u0D62\u0D63\u0D82\u0D83\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DF2\u0DF3\u0E31\u0E34-\u0E3A\u0E47-\u0E4E\u0EB1\u0EB4-\u0EB9\u0EBB\u0EBC\u0EC8-\u0ECD\u0F18\u0F19\u0F35\u0F37\u0F39\u0F3E\u0F3F\u0F71-\u0F84\u0F86\u0F87\u0F8D-\u0F97\u0F99-\u0FBC\u0FC6\u102B-\u103E\u1056-\u1059\u105E-\u1060\u1062-\u1064\u1067-\u106D\u1071-\u1074\u1082-\u108D\u108F\u109A-\u109D\u135D-\u135F\u1712-\u1714\u1732-\u1734\u1752\u1753\u1772\u1773\u17B4-\u17D3\u17DD\u180B-\u180D\u1885\u1886\u18A9\u1920-\u192B\u1930-\u193B\u1A17-\u1A1B\u1A55-\u1A5E\u1A60-\u1A7C\u1A7F\u1AB0-\u1ABE\u1B00-\u1B04\u1B34-\u1B44\u1B6B-\u1B73\u1B80-\u1B82\u1BA1-\u1BAD\u1BE6-\u1BF3\u1C24-\u1C37\u1CD0-\u1CD2\u1CD4-\u1CE8\u1CED\u1CF2-\u1CF4\u1CF7-\u1CF9\u1DC0-\u1DF9\u1DFB-\u1DFF\u20D0-\u20F0\u2CEF-\u2CF1\u2D7F\u2DE0-\u2DFF\u302A-\u302F\u3099\u309A\uA66F-\uA672\uA674-\uA67D\uA69E\uA69F\uA6F0\uA6F1\uA802\uA806\uA80B\uA823-\uA827\uA880\uA881\uA8B4-\uA8C5\uA8E0-\uA8F1\uA8FF\uA926-\uA92D\uA947-\uA953\uA980-\uA983\uA9B3-\uA9C0\uA9E5\uAA29-\uAA36\uAA43\uAA4C\uAA4D\uAA7B-\uAA7D\uAAB0\uAAB2-\uAAB4\uAAB7\uAAB8\uAABE\uAABF\uAAC1\uAAEB-\uAAEF\uAAF5\uAAF6\uABE3-\uABEA\uABEC\uABED\uFB1E\uFE00-\uFE0F\uFE20-\uFE2F]/g, "") : (str) => str;
 var BitapSearch = class {
   constructor(pattern, {
-    location = Config.location,
+    location: location2 = Config.location,
     threshold = Config.threshold,
     distance = Config.distance,
     includeMatches = Config.includeMatches,
@@ -64255,7 +64550,7 @@ var BitapSearch = class {
     ignoreLocation = Config.ignoreLocation
   } = {}) {
     this.options = {
-      location,
+      location: location2,
       threshold,
       distance,
       includeMatches,
@@ -64311,7 +64606,7 @@ var BitapSearch = class {
       return result2;
     }
     const {
-      location,
+      location: location2,
       distance,
       threshold,
       findAllMatches,
@@ -64323,7 +64618,7 @@ var BitapSearch = class {
     let hasMatches = false;
     this.chunks.forEach(({ pattern, alphabet, startIndex }) => {
       const { isMatch, score: score2, indices } = search(text4, pattern, alphabet, {
-        location: location + startIndex,
+        location: location2 + startIndex,
         distance,
         threshold,
         findAllMatches,
@@ -64501,7 +64796,7 @@ var InverseSuffixExactMatch = class extends BaseMatch {
 };
 var FuzzyMatch = class extends BaseMatch {
   constructor(pattern, {
-    location = Config.location,
+    location: location2 = Config.location,
     threshold = Config.threshold,
     distance = Config.distance,
     includeMatches = Config.includeMatches,
@@ -64513,7 +64808,7 @@ var FuzzyMatch = class extends BaseMatch {
   } = {}) {
     super(pattern);
     this._bitapSearch = new BitapSearch(pattern, {
-      location,
+      location: location2,
       threshold,
       distance,
       includeMatches,
@@ -64551,13 +64846,13 @@ var IncludeMatch = class extends BaseMatch {
     return /^'(.*)$/;
   }
   search(text4) {
-    let location = 0;
+    let location2 = 0;
     let index;
     const indices = [];
     const patternLen = this.pattern.length;
-    while ((index = text4.indexOf(this.pattern, location)) > -1) {
-      location = index + patternLen;
-      indices.push([index, location - 1]);
+    while ((index = text4.indexOf(this.pattern, location2)) > -1) {
+      location2 = index + patternLen;
+      indices.push([index, location2 - 1]);
     }
     const isMatch = !!indices.length;
     return {
@@ -64621,7 +64916,7 @@ var ExtendedSearch = class {
     minMatchCharLength = Config.minMatchCharLength,
     ignoreLocation = Config.ignoreLocation,
     findAllMatches = Config.findAllMatches,
-    location = Config.location,
+    location: location2 = Config.location,
     threshold = Config.threshold,
     distance = Config.distance
   } = {}) {
@@ -64633,7 +64928,7 @@ var ExtendedSearch = class {
       minMatchCharLength,
       findAllMatches,
       ignoreLocation,
-      location,
+      location: location2,
       threshold,
       distance
     };
@@ -65044,7 +65339,7 @@ Fuse.config = Config;
 }
 
 // common/navigation.ts
-var log19 = new Logger({ namespace: "Navigation", minLevel: "debug" });
+var log22 = new Logger({ namespace: "Navigation", minLevel: "debug" });
 var fuse;
 function flattenFilePaths(entries, prefix2 = "") {
   const paths = [];
@@ -65063,7 +65358,7 @@ async function initFuse() {
 }
 function searchFuse(query) {
   let res = fuse?.search(query) ?? [];
-  log19.debug("[fuse] - ", res);
+  log22.debug("[fuse] - ", res);
   return res;
 }
 async function getFileList() {
@@ -65076,7 +65371,7 @@ function updateFuseWithFilenames(newList) {
   fuse = new Fuse(newList, { includeScore: true, threshold: 0.4 });
 }
 async function fetchFileTree2(treeEl = document.createElement("div")) {
-  log19.debug("fetching filetree");
+  log22.debug("fetching filetree");
   const tree = await getFileList();
   treeEl.innerHTML = "";
   renderTree(tree, treeEl);
@@ -65100,7 +65395,7 @@ async function saveFile(text4, filename = null) {
     if (!activeTab) {
       return;
     }
-    log19.debug(activeTab);
+    log22.debug(activeTab);
     filename = activeTab.title;
   }
   const res = await fetch("/notes/" + filename, {
@@ -65109,10 +65404,10 @@ async function saveFile(text4, filename = null) {
     body: text4
   });
   if (!res.ok) {
-    log19.error(`Failed to save file: ${filename}`);
+    log22.error(`Failed to save file: ${filename}`);
     return;
   }
-  log19.info(`Saved ${filename}`);
+  log22.info(`Saved ${filename}`);
   eventBus.emit("fileSaved", { filename });
   showSaveStatus("saved");
 }
@@ -65173,10 +65468,11 @@ function toggleSidebar() {
 }
 
 // common/main.ts
-var log20 = new Logger({ namespace: "Main", minLevel: "debug" });
+var log23 = new Logger({ namespace: "Main", minLevel: "debug" });
 Logging.enableAll();
 (async () => {
   await initTabs();
+  await connectSocket("homepage", await getUserID());
   await generateNavigation();
   const initialFile = getInitialFileFromURL();
   if (initialFile) {
