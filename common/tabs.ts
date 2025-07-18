@@ -1,12 +1,12 @@
 //tabs.ts
 
-import { newEditor } from "./editor.ts";
 import { fetchFileTree, loadFile } from "./navigation.ts";
 import { updateBreadcrumb, showSaveStatus } from "./topbar.ts";
 import { showMetadataPanel } from './metadatapanel.ts';
 import { Logger } from "./logger.ts";
 import { shortUUID } from "./pluginhelpers.ts";
 import { GetPane, getActivePane, getPaneContent, handleTabDropToNewPane, removePane, setActivePane } from "./pane.ts";
+import { switchDocument } from "./websockets.ts";
 
 const log = new Logger({ namespace: "Tabs", minLevel: "debug" });
 
@@ -45,6 +45,7 @@ let spinner: HTMLElement | null = null;
 export async function initTabs() {
   log.info("Initializing tabs...");
   GetPane("main")
+
   
 
   // Restore saved tabs
@@ -133,8 +134,10 @@ export function switchToTab(paneId: string, tabId: string) {
 
   pane.activeTabId = tabId;
 
-  if (tab.isEditor && pane.editorInstance) {
-    pane.editorInstance.setValue(tab.contentEl.textContent || "");
+  if (tab.isEditor) {
+    //pane.editorInstance.setValue(tab.contentEl.textContent || "");
+    //newEditor(pane.contentEl, {collabMode:true, initialDoc: tab.contentEl.textContent})
+    switchDocument(tab.title)
   } else {
     // For non-editor tabs, show the tab content
     pane.contentEl.innerHTML = "";
@@ -235,12 +238,14 @@ export function renderTabsUI(paneId: string) {
     tabEl.className = "tab";
     tabEl.dataset.id = tabId;
     tabEl.draggable = true
+    const filename = tab.title
 
     // Drag handlers for the individual tab
     tabEl.addEventListener("dragstart", (e: DragEvent) => {
       e.dataTransfer?.setData("text/plain", JSON.stringify({
         tabId,
         fromPane: paneId,
+        filename: filename
       }));
       e.dataTransfer?.setDragImage(tabEl, 0, 0); // Optional: cleaner drag UX
     });
@@ -412,7 +417,8 @@ export function setContent(paneId: string, tabId:string){
   let pane = GetPane(paneId)
   let tab = allTabs.get(tabId)
   if (tab?.isEditor){
-    pane.editorInstance?.setValue(tab.contentEl.textContent || "")
+    //pane.editorInstance?.setValue(tab.contentEl.textContent || "")
+    //newEditor(pane.contentEl, {collabMode:true, initialDoc: tab.contentEl.textContent})
   }
   
   
@@ -481,7 +487,7 @@ export function showLoading(paneId: string, visible: boolean) {
 export function setupDragAndDrop(tabBar: HTMLElement, paneId: string) {
   tabBar.querySelectorAll(".tab").forEach((tabEl) => {
     const tabId = tabEl.getAttribute("data-id");
-
+    const tab = allTabs.get(tabId)
     if (!tabId) return;
 
     tabEl.setAttribute("draggable", "true");
@@ -489,7 +495,7 @@ export function setupDragAndDrop(tabBar: HTMLElement, paneId: string) {
     tabEl.addEventListener("dragstart", (e: DragEvent) => {
       e.dataTransfer?.setData(
         "application/json",
-        JSON.stringify({ tabId, fromPane: paneId })
+        JSON.stringify({ tabId, fromPane: paneId, filename:tab?.title })
       );
       e.dataTransfer!.effectAllowed = "move";
     });

@@ -40,7 +40,7 @@ import {
 import { EditorState } from "npm:@codemirror/state";
 
 // File saving and content loading
-import { saveFile } from "./navigation.ts"
+import { loadFile, saveFile } from "./navigation.ts"
 
 // Language setup
 import { markdown } from "npm:@codemirror/lang-markdown";
@@ -64,6 +64,12 @@ import { testHighlightPlugin } from '../cm_plugins/highlight.ts';
 import { getActiveTab, openEditorTab, switchToTab } from "./tabs.ts";
 import { SlashCommandPlugin, slashMenuKeymap } from '../cm_plugins/slashcommands.ts';
 import { fileLinkCompletions } from '../cm_plugins/autocomplete.ts';
+import { tabDropToTransclusion } from '../cm_plugins/tabdropTransclusion.ts';
+// collaboration functions
+import { applyServerUpdates, createCollabExtensions } from '../cm_plugins/collaboration.ts';
+
+import { connectSocket, getUserID, initSocket, sendUpdates } from './websockets.ts';
+import { shortUUID } from './pluginhelpers.ts';
 
 const EDITOR_PANE_ID = "main"; // Your main editor pane id
 
@@ -94,6 +100,7 @@ export const extensions = [
   wikilinkPlugin,
   hyperlinkPlugin,
   transclusionPlugin,
+  tabDropToTransclusion,
   autocompletion({ override: [fileLinkCompletions], activateOnTyping: true }),
   EditorView.theme({
     "&": { height: "100%" }
@@ -118,8 +125,6 @@ export const extensions = [
   highlightSelectionMatches(),
   lineNumbers(),
   EditorView.lineWrapping,
-  
-
 ]
 
 // Singleton CodeMirror instance
@@ -136,22 +141,26 @@ type CMEditor = {
  * @param container - DOM element to mount the editor into
  * @returns {EditorView | null}
  */
-export function newEditor(container: HTMLElement): CMEditor {
+export function newEditor(container: HTMLElement, options?: { collabMode?: boolean }): CMEditor {
+  const userID = getUserID()
+  const startVersion = 0;
+  
+
+  
   const state = EditorState.create({
     doc: "",
     extensions: [
+      ...createCollabExtensions(startVersion, userID),
       ...extensions,
       ...outsideExtensions
-    ],
+    ]
   });
 
-//log.warn("container:", container)
   const view = new EditorView({
     state,
-    parent: container,
+    parent: container    
   });
-
-
+  
   return {
     view,
     setValue: (docText: string) => {

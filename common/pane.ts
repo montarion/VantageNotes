@@ -7,6 +7,7 @@ import { showMetadataPanel } from './metadatapanel.ts';
 import { Logger } from "./logger.ts";
 import { shortUUID } from "./pluginhelpers.ts";
 import { Tab, renderTabsUI, setupDragAndDrop, switchToTab } from "./tabs.ts";
+import { connectSocket, linkEditorView } from "./websockets.ts";
 
 const log = new Logger({ namespace: "Pane", minLevel: "debug" });
 
@@ -53,8 +54,10 @@ export function GetPane(paneId?: string): Pane {
     paneEl.append(tabBar, tabContent);
     document.querySelector(".app")?.append(paneEl);
 
-  
-    const editor = newEditor(tabContent);
+    let editorOpts = {collabMode: true}
+    const editor = newEditor(tabContent, editorOpts);
+    
+    linkEditorView(editor)
   
     const paneObj: Pane = {
       id: paneId,
