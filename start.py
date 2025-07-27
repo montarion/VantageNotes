@@ -13,6 +13,7 @@ from urllib.parse import parse_qs
 import metadata
 import db
 from collab_state import DocumentStore 
+from sockets import WebSocketHandler
 
 NOTES_DIR = 'static/notes'
 
@@ -111,11 +112,11 @@ def notes(filename):
             with open(save_path) as f:
                 data = f.read()
         except FileNotFoundError:
-            #ensure_file_exists(save_path)
-            #with open(save_path, 'w', encoding='utf-8') as f:
-            #    f.write(request.data.decode("utf-8"))
+            ensure_file_exists(save_path)
+            with open(save_path) as f:
+                data = f.read()
 
-            return "File not found", 404
+            #return "File not found", 404
         return data
     if request.method == "POST":
         today = date.today()      
@@ -139,166 +140,14 @@ def notes(filename):
 ### WEBSOCKETS ###
 clients = {}
 active_docs = {}
-
+doc_id = None
 @websockets.route('/ws')
 def handle_ws(ws):
     query = parse_qs(request.query_string.decode())
-    doc_id = query.get("doc", [""])[0]
-    user_id = query.get("user", ["unknown"])[0]
+    #print(f"📡 WebSocket connect: user={user_id}")
 
-    print(f"📡 WebSocket connect: doc={doc_id}, user={user_id}")
-
-    # Track clients per doc
-    if doc_id not in clients:
-        clients[doc_id] = []
-    clients[doc_id].append(ws)
-
-    def create_full_doc_update(full_text: str):
-        # Adapt this to your update format expected by client
-        return {
-            "type": "full-replace",
-            "content": full_text
-        }
-
-    def send_init_for_doc(doc):
-        try:
-            full_updates = doc_store.get_all_updates_for_doc(doc)
-            current_version = doc_store.get_version(doc)
-
-            # If no updates but doc text exists, create a synthetic full update
-            if not full_updates:
-                raw_text = doc_store.get_document_text(doc)
-                if raw_text:
-                    print("⚠️ No updates found but document text exists, creating full document update")
-                    full_updates = [create_full_doc_update(raw_text)]
-                    current_version = 1
-                    # Optionally store this synthetic update for persistence/versioning
-                    doc_store.store_updates(doc, "system", full_updates)
-
-            initmsg = json.dumps({
-                "type": "init",
-                "updates": full_updates,
-                "version": current_version
-            })
-            print(f"Initmsg for doc {doc}: {initmsg}")
-            ws.send(initmsg)
-            return current_version
-        except Exception as e:
-            print(f"❌ Failed to send init data for doc {doc}: {e}")
-            return None
-
-    current_version = send_init_for_doc(doc_id)
-
-    try:
-        while True:
-            data = ws.receive()
-            if data is None:
-                break
-
-            try:
-                message = json.loads(data)
-            except json.JSONDecodeError:
-                print(f"❌ Invalid JSON received: {data}")
-                continue
-
-            msg_type = message.get("type")
-
-            if msg_type == "switchDoc":
-                new_doc_id = message.get("doc")
-                if not new_doc_id:
-                    print("⚠️ switchDoc missing 'doc' field")
-                    continue
-
-                # Remove ws from old doc clients list
-                if doc_id in clients and ws in clients[doc_id]:
-                    clients[doc_id].remove(ws)
-                    print(f"🔄 Client {user_id} left doc {doc_id}")
-
-                    # Clean up empty client list for old doc if needed
-                    if len(clients[doc_id]) == 0:
-                        del clients[doc_id]
-
-                # Add ws to new doc clients list
-                doc_id = new_doc_id
-                if doc_id not in clients:
-                    clients[doc_id] = []
-                clients[doc_id].append(ws)
-                print(f"🔄 Client {user_id} switched to doc {doc_id}")
-
-                # Send full init updates for new doc
-                current_version = send_init_for_doc(doc_id)
-
-            elif msg_type == "updates":
-                updates = message.get("updates", [])
-                print(f"✅ Received {len(updates)} updates from client {user_id} on doc {doc_id}")
-                client_version = message.get("version")
-                server_version = doc_store.get_version(doc_id)
-
-                if client_version != server_version:
-                    print(f"⚠️ Version mismatch: client={client_version}, server={server_version}")
-                    full_updates = doc_store.get_all_updates_for_doc(doc_id)
-
-                    # Same logic here in case no incremental updates:
-                    if not full_updates:
-                        raw_text = doc_store.get_document_text(doc_id)
-                        if raw_text:
-                            full_updates = [create_full_doc_update(raw_text)]
-                            server_version = 1
-
-                    ws.send(json.dumps({
-                        "type": "init",
-                        "updates": full_updates,
-                        "version": server_version
-                    }))
-                    continue  # Skip out-of-sync updates
-
-                doc_store.store_updates(doc_id, user_id, updates)
-                new_version = doc_store.get_version(doc_id)
-
-                broadcast_data = json.dumps({
-                    "type": "updates",
-                    "updates": updates,
-                    "version": new_version,
-                    "user": user_id
-                })
-                print(f"✅ Stored updates from {user_id} on doc {doc_id} — new server version: {new_version}")
-
-                # Broadcast to all other clients of the same doc
-                for client in clients.get(doc_id, []):
-                    if client != ws:
-                        try:
-                            client.send(broadcast_data)
-                        except Exception as e:
-                            print(f"❌ Broadcast error: {e}")
-
-            elif msg_type == "resync-request":
-                print(f"🔁 Resync requested by {user_id} on doc {doc_id}")
-                full_updates = doc_store.get_all_updates_for_doc(doc_id)
-                current_version = doc_store.get_version(doc_id)
-
-                # Same logic for no updates on resync
-                if not full_updates:
-                    raw_text = doc_store.get_document_text(doc_id)
-                    if raw_text:
-                        full_updates = [create_full_doc_update(raw_text)]
-                        current_version = 1
-
-                ws.send(json.dumps({
-                    "type": "init",
-                    "updates": full_updates,
-                    "version": current_version
-                }))
-
-            else:
-                print("⚠️ Unrecognized message:", message)
-
-    except Exception as e:
-        print(f"⚠️ WebSocket error ({user_id}): {e}")
-    finally:
-        print(f"🔌 Disconnect: {user_id} from {doc_id}")
-        if doc_id in clients and ws in clients[doc_id]:
-            clients[doc_id].remove(ws)
-
+    handler = WebSocketHandler(ws, clients)
+    handler.run()
 
 
 if __name__ == "__main__":
