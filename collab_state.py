@@ -50,16 +50,27 @@ class DocumentStore:
         with open(save_path) as f:
             data = f.read()
         return data
+
     def store_updates(self, doc_id, user_id, updates):
         with sqlite3.connect(self.db_path) as conn:
             cur = conn.cursor()
             for update in updates:
+                if "changes" not in update or "clientID" not in update:
+                    raise ValueError("Update must include clientID and changes")
+                
+                if update.get("clientID") == "system":
+                    continue  # Skip system-generated init update
+                # Optional: sanity check changes format
+                assert isinstance(update["changes"], list), f"Changes must be a list (from toJSON()). Message was: {update}"
+                
+                print(f"Inserting update from {user_id}: {update}")
                 update_json = json.dumps(update)
+
                 cur.execute(
                     "INSERT INTO updates (doc_id, user_id, updates_json) VALUES (?, ?, ?)",
                     (doc_id, user_id, update_json)
                 )
-            conn.commit()
+        conn.commit()
 
     def get_updates_since(self, doc_id, version):
         with sqlite3.connect(self.db_path) as conn:
@@ -72,6 +83,7 @@ class DocumentStore:
                 LIMIT -1 OFFSET ?
             """, (doc_id, version))
             rows = cur.fetchall()
+            print(rows)
             return [json.loads(row[0]) for row in rows]
 
     def get_all_updates(self):
@@ -91,3 +103,35 @@ class DocumentStore:
             """, (doc_id,))
             rows = cur.fetchall()
             return [json.loads(row[0]) for row in rows]
+
+    def rebuild_and_save_document(self, doc_id):
+        print(f"Rebuilding document")
+        updates = self.get_all_updates_for_doc(doc_id)  # list of change dicts
+        print(updates)
+
+        # Start with an empty list of characters (more efficient than string concat)
+        doc = []
+
+        for update in updates:
+            changes = update['changes']
+
+            # Some changes are a list of multiple operations; handle both formats
+            if isinstance(changes[0], list):  # e.g., [[0, 'a']]
+                for change in changes:
+                    pos, value = change
+                    doc.insert(pos, value)
+            else:  # single operation, e.g., [4, [0, 'e']] or [4, [1]]
+                pos, op = changes
+                if op[0] == 0:
+                    # Insert operation
+                    char = op[1]
+                    doc.insert(pos, char)
+                elif op[0] == 1:
+                    # Delete operation
+                    if 0 <= pos < len(doc):
+                        del doc[pos]
+
+        final_text = ''.join(doc)
+        print(f"Final document content: {final_text}")
+        #self.save_document(doc_id, final_text)
+        return final_text
