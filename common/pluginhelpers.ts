@@ -28,3 +28,21 @@ export class ZeroWidthWidget extends WidgetType {
     return span;
   }
 }
+
+
+export function lsSet(key, value){
+  if (!Object.keys(localStorage).includes(key)){
+    log.warn(`${key} was not yet in localstorage, now added.`)
+    localStorage.setItem(key, JSON.stringify({}))
+
+  }
+  log.debug("Value is: ", value)
+  localStorage.setItem(key, JSON.stringify(value))
+}
+
+export function lsGet(key){
+  if (Object.keys(localStorage).includes(key)){
+    return JSON.parse(localStorage.getItem(key))
+  }
+  return null
+}
