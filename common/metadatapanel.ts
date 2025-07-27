@@ -178,7 +178,6 @@ function renderMetadata(metadata: any): HTMLElement {
     tag.href = "#";
     tag.className = "cm-tag";
     tag.dataset.tag = t;
-    log.error("Tag:", t)
     tag.textContent = `#${t}`;
     if (i > 0) return [document.createTextNode(", "), tag];
     return [tag];
