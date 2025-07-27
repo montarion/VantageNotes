@@ -5,6 +5,7 @@ import { Logger } from '../common/logger.ts';
 import { getActiveTab } from "../common/tabs.ts";
 import { transclusionActiveField } from "./transclusions.ts";
 import { loadFile } from "../common/navigation.ts";
+import { getDocumentMode, getActiveDocId } from "./collaboration.ts";
 
 const log = new Logger({ namespace: 'Autosave', minLevel: 'debug' });
 
@@ -19,6 +20,10 @@ function createAutoSavePlugin(saveCallback: (content: string) => void, delay = 1
       }
 
       update(update: ViewUpdate) {
+        if (getDocumentMode(getActiveDocId()) != "single") {
+          return; // not doing anything with autosave 
+        }
+        log.debug("Only one in document, running autosave")
         const isTransclusionActive = update.state.field(transclusionActiveField, false);
         if (!Object.keys(localStorage).includes("ActiveTab")){
           return

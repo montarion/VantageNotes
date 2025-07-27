@@ -6,7 +6,8 @@ import { showMetadataPanel } from './metadatapanel.ts';
 import { Logger } from "./logger.ts";
 import { shortUUID } from "./pluginhelpers.ts";
 import { GetPane, getActivePane, getPaneContent, handleTabDropToNewPane, removePane, setActivePane } from "./pane.ts";
-import { switchDocument } from "./websockets.ts";
+import { joinDocument, linkEditorView } from "./websockets.ts";
+import { getDocumentMode } from "../cm_plugins/collaboration.ts";
 
 const log = new Logger({ namespace: "Tabs", minLevel: "debug" });
 
@@ -27,17 +28,10 @@ type TabCreation = {
   contentEl: HTMLElement;
 
   isEditor?: boolean;
-};
-
-
-
+}
+const tabsByPane = new Map<string, Map<string, Tab>>();
 const allTabs = new Map<string, Tab>();
 
-
-
-// Map paneId => HTMLElement for tab content container
-
-const tabContentsByPane = new Map<string, Map<string, HTMLElement>>();
 // Store tab bars and content containers per pane
 const contentContainers = new Map<string, HTMLElement>();
 let spinner: HTMLElement | null = null;
@@ -50,6 +44,7 @@ export async function initTabs() {
 
   // Restore saved tabs
   //await restoreTabs()
+  log.debug("initTabs finished")
 }
 
 
@@ -135,9 +130,18 @@ export function switchToTab(paneId: string, tabId: string) {
   pane.activeTabId = tabId;
 
   if (tab.isEditor) {
-    //pane.editorInstance.setValue(tab.contentEl.textContent || "");
     //newEditor(pane.contentEl, {collabMode:true, initialDoc: tab.contentEl.textContent})
-    switchDocument(tab.title)
+    log.debug("trying to call joindocument")
+    joinDocument(tab.title)
+    if (getDocumentMode(tab.title) == "single"){
+      pane.editorInstance.setValue(tab.contentEl.textContent || "");
+
+    } else {
+      //linkEditorView(tab.title, pane.editorInstance?.view)
+    }
+    // trying to always add 
+    linkEditorView(tab.title, pane.editorInstance?.view)
+
   } else {
     // For non-editor tabs, show the tab content
     pane.contentEl.innerHTML = "";
@@ -549,7 +553,7 @@ export async function openEditorTab({paneId, filename}) {
 
   // Load the file's content
   const content = await loadFile(filename);
-
+  
   // Create a container for CodeMirror
   const contentEl = document.createElement("div");
   contentEl.style.height = "100%";

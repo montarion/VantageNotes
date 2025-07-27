@@ -20,7 +20,7 @@ import { Logger, Logging } from './logger.ts';
 import { shortUUID } from "./pluginhelpers.ts";
 import { GetPane } from "./pane.ts";
 import { connectSocket, getUserID } from "./websockets.ts";
-import { applyServerUpdates } from "../cm_plugins/collaboration.ts";
+import { applyServerUpdates, setDocumentMode } from "../cm_plugins/collaboration.ts";
 
 const log = new Logger({ namespace: 'Main', minLevel: 'debug' });
 
@@ -36,9 +36,11 @@ Logging.enableAll();
 //  log.info("Page metadata:", metadata);
 //});
 
+
 (async () => {
   await initTabs();
-  await connectSocket("homepage", await getUserID())
+  log.debug("before connectsocket")
+  await connectSocket()
   
 
 
