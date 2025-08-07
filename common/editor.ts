@@ -64,10 +64,13 @@ import { SlashCommandPlugin, slashMenuKeymap } from '../cm_plugins/slashcommands
 import { fileLinkCompletions } from '../cm_plugins/autocomplete.ts';
 import { tabDropToTransclusion } from '../cm_plugins/tabdropTransclusion.ts';
 // collaboration functions
-import { collabPlugin } from '../cm_plugins/collaboration.ts';
+import { collabPlugin, setActiveDocId, setDocumentMode } from '../cm_plugins/collaboration.ts';
 import { collab } from "npm:@codemirror/collab";
+import { Text } from "npm:@codemirror/state";
 
 import { getUserID} from './websockets.ts';
+import { getPaneByDocID } from './pane.ts';
+import { pendingUpdatesPlugin } from '../cm_plugins/pendingtext.ts';
 
 const EDITOR_PANE_ID = "main"; // Your main editor pane id
 
@@ -78,7 +81,7 @@ const log = new Logger({ namespace: 'Editor', minLevel: 'debug' });
 // Extensions that are injected dynamically or from outside
 export const outsideExtensions = [
   transclusionActiveField,
-  createAutoSavePlugin(saveFile, 500),
+  
 ]
 
 // Main set of editor extensions, plugins and UI features
@@ -128,19 +131,24 @@ let editorView: EditorView | null = null;
 
 type CMEditor = {
   view: EditorView;
+  collab_enabled: boolean;
   setValue: (code: string) => void;
   getValue: () => string;
   destroy: () => void;
+  enableCollab: (version: number) => void;
 };
 /**
  * Creates (or reuses) a CodeMirror editor instance and returns the view object.
  * @param container - DOM element to mount the editor into
  * @returns {EditorView | null}
  */
-export function newEditor(container: HTMLElement, options?: { collabMode?: boolean }): CMEditor {
+/*
+export function newEditor(container: HTMLElement, options?: { startVersion?: number, collabMode?: boolean }): CMEditor {
   const userID = getUserID()
-  const startVersion = 0;
-  
+  let startVersion = 0;
+  if (options?.startVersion){
+    startVersion = options.startVersion
+  }
 
   
   const state = EditorState.create({
@@ -169,6 +177,74 @@ export function newEditor(container: HTMLElement, options?: { collabMode?: boole
     destroy: () => view.destroy(),
   };
 }
+*/
+
+export function newEditor(container: HTMLElement, options?: { startVersion?: number, collabMode?: boolean }): CMEditor {
+  const userID = getUserID();
+  let collab_enabled = false;
+
+  let baseExtensions = [
+    ...extensions,
+    ...outsideExtensions
+  ];
+
+  if (options?.collabMode && options.startVersion != null) {
+    baseExtensions = [
+      collab({ startVersion: options.startVersion, clientID: userID }),
+      collabPlugin,
+      ...baseExtensions
+    ];
+  } else {
+    baseExtensions = [
+      createAutoSavePlugin(saveFile, 500),
+      ...baseExtensions
+    ];
+  }
+
+  const state = EditorState.create({
+    doc: "",
+    extensions: baseExtensions
+  });
+
+  const view = new EditorView({
+    state,
+    parent: container
+  });
+
+  function enableCollab(startVersion: number) {
+    
+    if (this.collab_enabled == false){ 
+      log.debug("Enabling collaboration mode")
+      const newState = EditorState.create({
+        doc: view.state.doc,
+        extensions: [
+          collab({ startVersion, clientID: userID }),
+          collabPlugin,
+          pendingUpdatesPlugin,
+          ...extensions,
+          ...outsideExtensions
+        ]
+      });
+      view.setState(newState);
+      this.collab_enabled = true
+    } else {
+      log.debug("not enabling collaboration mode, already enabled.")
+    }
+  }
+
+  return {
+    view,
+    collab_enabled: false,
+    setValue: (docText: string) => {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: docText }
+      });
+    },
+    getValue: () => view.state.doc.toString(),
+    destroy: () => view.destroy(),
+    enableCollab,
+  };
+}
 
 /**
  * Opens the currently active editor tab or opens the specified filename in the editor pane.
@@ -187,4 +263,39 @@ export async function openActiveEditorTab(filename?: string) {
   } else {
     await openEditorTab({paneId:EDITOR_PANE_ID, filename:"todo"});
   }
+}
+
+export function resetEditorStateFromServerInit(
+  docId: string,
+  docText: string,
+  version: number,
+  mode: string
+) {
+  const pane = getPaneByDocID(docId);
+  const view = pane?.editorInstance.view;
+
+  if (!view) {
+    console.error("❌ No editor view found for doc", docId);
+    return;
+  }
+  log.debug("here")
+  const clientID = getUserID();
+  const newText = Text.of(docText.split("\n"));
+
+  const newState = EditorState.create({
+    doc: newText,
+    extensions: [
+      collab({ startVersion: version, clientID }),
+      collabPlugin,
+      ...extensions,
+      ...outsideExtensions,
+    ],
+  });
+
+  view.setState(newState);
+
+  setActiveDocId(docId);
+  setDocumentMode(docId, mode);
+
+  console.debug(`✅ Reset editor state for doc ${docId} at version ${version}`);
 }
