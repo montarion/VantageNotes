@@ -14,7 +14,9 @@ import metadata
 import db
 from collab_state import DocumentStore 
 from sockets import WebSocketHandler
+from logger import log, Logger
 
+log = Logger("Main")
 NOTES_DIR = 'static/notes'
 
 db.init_db()
@@ -46,16 +48,7 @@ def build_file_tree(path):
             })
     return tree
 
-def ensure_file_exists(path: str):
-    # Ensure parent directories exist
-    dir_name = os.path.dirname(path)
-    if dir_name and not os.path.exists(dir_name):
-        os.makedirs(dir_name)
 
-    # Ensure the file exists
-    if not os.path.exists(path):
-        with open(path, 'w') as f:
-            pass  # Create an empty file
 
 @app.route("/")
 def main():
@@ -112,7 +105,7 @@ def notes(filename):
             with open(save_path) as f:
                 data = f.read()
         except FileNotFoundError:
-            ensure_file_exists(save_path)
+            doc_store.ensure_file_exists(save_path)
             with open(save_path) as f:
                 data = f.read()
 
@@ -120,7 +113,7 @@ def notes(filename):
         return data
     if request.method == "POST":
         today = date.today()      
-        ensure_file_exists(save_path)
+        doc_store.ensure_file_exists(save_path)
 
         with open(save_path, 'w', encoding='utf-8') as f:
             f.write(request.data.decode("utf-8"))
@@ -130,7 +123,7 @@ def notes(filename):
             #db.save_file_metadata(filename, metadata_obj, content, "metadata.db")
             db.save_file(filename, content, metadata_obj)
         except Exception as e:
-            traceback.print_exc()
+            traceback.self.log_exc()
             raise Exception
             return jsonify({'error': f'Failed to parse and save metadata: {str(e)}'}), 500
 
@@ -144,7 +137,7 @@ doc_id = None
 @websockets.route('/ws')
 def handle_ws(ws):
     query = parse_qs(request.query_string.decode())
-    #print(f"📡 WebSocket connect: user={user_id}")
+    #self.log(f"📡 WebSocket connect: user={user_id}")
 
     handler = WebSocketHandler(ws, clients)
     handler.run()
