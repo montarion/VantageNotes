@@ -1,30 +1,27 @@
-
-from flask import Flask, render_template, send_from_directory, request, jsonify
-from time import sleep
-import os, subprocess, json, shutil
-from datetime import date
-from flask_compress import Compress
+import os
 import traceback
-
-from flask_sock import Sock
+from datetime import date
 from urllib.parse import parse_qs
+import asyncio
 
+from quart import Quart, render_template, request, jsonify, send_from_directory, websocket
+from quart_compress import Compress
 
 import metadata
 import db
-from collab_state import DocumentStore 
-from sockets import WebSocketHandler
-from logger import log, Logger
-
+from collab_state import DocumentStore
+from logger import Logger
 log = Logger("Main")
+
+from collab_ws import start_yjs_server
+
 NOTES_DIR = 'static/notes'
 
 db.init_db()
 db.load_all_notes(NOTES_DIR, parser=metadata.parse_markdown_file)
 
-app = Flask(__name__)
+app = Quart(__name__)
 Compress(app)
-websockets = Sock(app)
 
 os.chdir("/home/jamiro/code/vantagenotes/")
 
@@ -42,6 +39,9 @@ def build_file_tree(path):
                 "children": build_file_tree(os.path.join(path, entry.name))
             })
         else:
+            if os.path.getsize(entry.path) == 0:
+                os.remove(entry.path) # remove empty files (say, from building wikilinks)
+                continue  # Skip empty files
             tree.append({
                 "name": entry.name,
                 "type": "file"
@@ -49,46 +49,42 @@ def build_file_tree(path):
     return tree
 
 
-
 @app.route("/")
-def main():
-    return render_template("index.html")
+async def main():
+    return await render_template("index.html")
 
 
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
-def catch_all(path):
-    # 1. Let Flask handle API/backend routes
-    
+async def catch_all(path):
     if path.startswith("notes/") or path.startswith("api/"):
         return "Not Found", 404
 
-    # 2. Serve static files (e.g. main.js, styles.css, etc.)
     static_path = os.path.join("static", path)
     if os.path.exists(static_path) and not os.path.isdir(static_path):
-        return send_from_directory("static", path)
+        return await send_from_directory("static", path)
 
-    # 3. Otherwise, serve index.html to let frontend handle routing
-    return render_template("index.html")
+    return await render_template("index.html")
+
 
 @app.route("/api/notes")
-def filelist():
+async def filelist():
     full_path = os.path.abspath("static/notes")
     tree = build_file_tree(full_path)
     return jsonify(tree)
 
 
 @app.route('/api/metadata/<path:filename>')
-def api_get_metadata(filename):
+async def api_get_metadata(filename):
     md = db.get_metadata(filename)
-
     return jsonify(md)
 
+
 @app.route('/api/search')
-def api_search():
+async def api_search():
     q = request.args.get('q', '')
-    field = request.args.get('field', None)  # e.g. filename, tags, content
-    tag = request.args.get('tag', None)      # filter by tag name
+    field = request.args.get('field', None)
+    tag = request.args.get('tag', None)
     has_tasks = request.args.get('has_tasks', None)
     if has_tasks is not None:
         has_tasks = has_tasks.lower() == 'true'
@@ -96,10 +92,11 @@ def api_search():
     results = db.search(q, field=field, tag=tag, has_tasks=has_tasks)
     return jsonify(results)
 
-@app.route("/notes/<path:filename>", methods = ['GET', 'POST'])
-def notes(filename):
+
+@app.route("/notes/<path:filename>", methods=['GET', 'POST'])
+async def notes(filename):
     save_path = f"static/notes/{filename}.md"
-    
+
     if request.method == "GET":
         try:
             with open(save_path) as f:
@@ -108,41 +105,34 @@ def notes(filename):
             doc_store.ensure_file_exists(save_path)
             with open(save_path) as f:
                 data = f.read()
-
-            #return "File not found", 404
         return data
-    if request.method == "POST":
-        today = date.today()      
-        doc_store.ensure_file_exists(save_path)
 
-        with open(save_path, 'w', encoding='utf-8') as f:
-            f.write(request.data.decode("utf-8"))
-
-        try:
-            metadata_obj, content = metadata.parse_markdown_file(save_path)
-            #db.save_file_metadata(filename, metadata_obj, content, "metadata.db")
-            db.save_file(filename, content, metadata_obj)
-        except Exception as e:
-            traceback.self.log_exc()
-            raise Exception
-            return jsonify({'error': f'Failed to parse and save metadata: {str(e)}'}), 500
+    #if request.method == "POST":
+    #    today = date.today()
+    #    doc_store.ensure_file_exists(save_path)
+#
+    #    body = await request.get_data()
+    #    with open(save_path, 'w', encoding='utf-8') as f:
+    #        f.write(body.decode("utf-8"))
+#
+    #    try:
+    #        metadata_obj, content = metadata.parse_markdown_file(save_path)
+    #        #db.save_file_metadata(filename, metadata_obj, content, "metadata.db")
+    #        db.save_file(filename, content, metadata_obj)
+    #    except Exception as e:
+    #        log.error(f"Metadata parse/save error: {e}")
+    #        traceback.print_exc()
+    #        return jsonify({'error': f'Failed to parse and save metadata: {str(e)}'}), 500
 
         return jsonify({'message': f'File {filename} uploaded and indexed successfully.', "metadata": db.get_metadata(filename)}), 201
-    return "failed", 500
 
-### WEBSOCKETS ###
-clients = {}
-active_docs = {}
-doc_id = None
-@websockets.route('/ws')
-def handle_ws(ws):
-    query = parse_qs(request.query_string.decode())
-    #self.log(f"📡 WebSocket connect: user={user_id}")
 
-    handler = WebSocketHandler(ws, clients)
-    handler.run()
 
+async def main():
+    await asyncio.gather(
+        app.run_task(host="0.0.0.0", port=11624),
+        start_yjs_server(host="0.0.0.0", port=11625), 
+    )
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=11624, debug=True)
-
+    asyncio.run(main())
