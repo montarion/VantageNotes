@@ -53,9 +53,8 @@ export function GetPane(paneId?: string): Pane {
     paneEl.append(tabBar, tabContent);
     document.querySelector(".app")?.append(paneEl);
 
-    let editorOpts = {collabMode: true}
-    const editor = newEditor(tabContent, editorOpts);
-    
+    const editor = newEditor(tabContent);
+    log.debug("editor created")
     //linkEditorView(editor)
   
     const paneObj: Pane = {
@@ -259,3 +258,18 @@ function setupPaneDragZones(paneEl: HTMLElement, paneId: string) {
     });
   });
   
+export function getPaneByDocID(docID: string): Pane | undefined {
+  log.warn(panes)
+  for (const pane of panes.values()) {
+    log.warn(pane)
+    for (const tab of pane.tabs.values()) {
+      log.warn(tab)
+      log.debug("tab title:", tab.title)
+      log.debug("docID", docID)
+      if (tab.title === docID) {
+        return pane;
+      }
+    }
+  }
+  return undefined;
+}

@@ -19,8 +19,6 @@ import { setupSearchHandler } from "./search.ts";
 import { Logger, Logging } from './logger.ts';
 import { shortUUID } from "./pluginhelpers.ts";
 import { GetPane } from "./pane.ts";
-import { connectSocket, getUserID } from "./websockets.ts";
-import { applyServerUpdates, setDocumentMode } from "../cm_plugins/collaboration.ts";
 
 const log = new Logger({ namespace: 'Main', minLevel: 'debug' });
 
@@ -40,7 +38,7 @@ Logging.enableAll();
 (async () => {
   await initTabs();
   log.debug("before connectsocket")
-  await connectSocket()
+  //await connectSocket()
   
 
 
