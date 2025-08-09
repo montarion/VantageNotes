@@ -6,8 +6,6 @@ import { showMetadataPanel } from './metadatapanel.ts';
 import { Logger } from "./logger.ts";
 import { shortUUID } from "./pluginhelpers.ts";
 import { GetPane, getActivePane, getPaneContent, handleTabDropToNewPane, removePane, setActivePane } from "./pane.ts";
-import { joinDocument, linkEditorView } from "./websockets.ts";
-import { getDocumentMode } from "../cm_plugins/collaboration.ts";
 
 const log = new Logger({ namespace: "Tabs", minLevel: "debug" });
 
@@ -130,18 +128,10 @@ export function switchToTab(paneId: string, tabId: string) {
   pane.activeTabId = tabId;
 
   if (tab.isEditor) {
-    //newEditor(pane.contentEl, {collabMode:true, initialDoc: tab.contentEl.textContent})
-    log.debug("trying to call joindocument")
-    joinDocument(tab.title)
-    if (getDocumentMode(tab.title) == "single"){
-      pane.editorInstance.setValue(tab.contentEl.textContent || "");
-
-    } else {
-      //linkEditorView(tab.title, pane.editorInstance?.view)
-    }
-    // trying to always add 
-    linkEditorView(tab.title, pane.editorInstance?.view)
-
+    
+    pane.editorInstance.bindCollaboration(tab.title, tab.contentEl.textContent);
+    //pane.editorInstance?.setValue(tab.contentEl.textContent)
+    
   } else {
     // For non-editor tabs, show the tab content
     pane.contentEl.innerHTML = "";
