@@ -1,0 +1,5 @@
+quart
+quart-compress
+ypy-websocket
+fuzzywuzzy
+python-Levenshtein
