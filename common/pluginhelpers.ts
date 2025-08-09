@@ -46,3 +46,20 @@ export function lsGet(key){
   }
   return null
 }
+
+export function generateClientUpdateID(): string {
+  return "update-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
+}
+
+
+/**
+ * Util: Get current user ID (persistent)
+ */
+export function getUserID(): string {
+  let id = localStorage.getItem("USERID");
+  if (!id) {
+    id = shortUUID(6);
+    localStorage.setItem("USERID", id);
+  }
+  return id;
+}
