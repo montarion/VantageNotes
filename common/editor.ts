@@ -1,7 +1,5 @@
 // editor.ts
-// This module sets up a CodeMirror 6 editor instance with a collection of plugins/extensions.
-// It includes custom Markdown enhancements, autosaving, and UI features like transclusions,
-// checklists, folding, syntax highlighting, and autocomplete.
+// CodeMirror 6 editor setup with Yjs-based collaboration integration.
 
 // Logging utility
 import { Logger } from './logger.ts';
@@ -10,36 +8,35 @@ import { Logger } from './logger.ts';
 import {
   keymap, EditorView,
   highlightActiveLine, rectangularSelection,
-  crosshairCursor, lineNumbers,drawSelection,
+  crosshairCursor, lineNumbers, drawSelection,
   dropCursor,
   highlightSpecialChars
-} from "npm:@codemirror/view"
+} from "npm:@codemirror/view";
 
 // Language-related features
 import {
   defaultHighlightStyle, syntaxHighlighting, indentOnInput,
   bracketMatching
-} from "npm:@codemirror/language"
+} from "npm:@codemirror/language";
 
 // Editing history and keymaps
 import {
   defaultKeymap, history, indentWithTab
-} from "npm:@codemirror/commands"
+} from "npm:@codemirror/commands";
 
 // Search functionality
 import {
   highlightSelectionMatches
-} from "npm:@codemirror/search"
+} from "npm:@codemirror/search";
 
 // Autocomplete and bracket closing
 import {
   autocompletion, closeBrackets
-} from "npm:@codemirror/autocomplete"
+} from "npm:@codemirror/autocomplete";
 
-import { EditorState } from "npm:@codemirror/state";
+import { EditorState, StateEffect, Extension, StateField } from "npm:@codemirror/state";
 
-// File saving and content loading
-import { saveFile } from "./navigation.ts"
+
 
 // Language setup
 import { markdown } from "npm:@codemirror/lang-markdown";
@@ -53,42 +50,38 @@ import { checklistPlugin } from "../cm_plugins/checklists.ts";
 import { decorateCodeblockLinesPlugin } from "../cm_plugins/codeblocks.ts";
 import { decorateQuoteBlocksPlugin } from "../cm_plugins/quotes.ts";
 import { inlineCodePlugin } from "../cm_plugins/inlinecode.ts";
-import { createAutoSavePlugin } from "../cm_plugins/autosave.ts";
 import { wikilinkPlugin } from "../cm_plugins/wikilinks.ts";
-import { hyperlinkPlugin } from "../cm_plugins/hyperlinks.ts";
-import { transclusionPlugin, transclusionActiveField} from "../cm_plugins/transclusions.ts";
+import { hyperlinkPlugin, pasteLinkOnSelection } from "../cm_plugins/hyperlinks.ts";
+import { transclusionPlugin, transclusionActiveField } from "../cm_plugins/transclusions.ts";
 
 // Import tab management functions
 import { getActiveTab, openEditorTab, switchToTab } from "./tabs.ts";
 import { SlashCommandPlugin, slashMenuKeymap } from '../cm_plugins/slashcommands.ts';
 import { fileLinkCompletions } from '../cm_plugins/autocomplete.ts';
 import { tabDropToTransclusion } from '../cm_plugins/tabdropTransclusion.ts';
-// collaboration functions
-import { collabPlugin, setActiveDocId, setDocumentMode } from '../cm_plugins/collaboration.ts';
-import { collab } from "npm:@codemirror/collab";
-import { Text } from "npm:@codemirror/state";
 
-import { getUserID} from './websockets.ts';
-import { getPaneByDocID } from './pane.ts';
-import { pendingUpdatesPlugin } from '../cm_plugins/pendingtext.ts';
+// Yjs and Yjs-Codemirror integration
+import * as Y from 'npm:yjs';
+import { yCollab } from 'npm:y-codemirror.next';
+import { WebsocketProvider } from 'npm:y-websocket';
+import { IndexeddbPersistence } from 'npm:y-indexeddb';
+
+import { getUserID } from '../common/pluginhelpers.ts';
 
 const EDITOR_PANE_ID = "main"; // Your main editor pane id
-
-
 
 const log = new Logger({ namespace: 'Editor', minLevel: 'debug' });
 
 // Extensions that are injected dynamically or from outside
 export const outsideExtensions = [
   transclusionActiveField,
-  
-]
+];
 
-// Main set of editor extensions, plugins and UI features
-export const extensions = [
+// Main set of editor extensions, plugins and UI features (non-collab)
+export const baseExtensions = [
   SlashCommandPlugin,
   slashMenuKeymap,
-  markdown({codeLanguages: languages}),
+  markdown({ codeLanguages: languages }),
   tagPlugin,
   headers,
   lists,
@@ -98,6 +91,7 @@ export const extensions = [
   inlineCodePlugin,
   wikilinkPlugin,
   hyperlinkPlugin,
+  pasteLinkOnSelection,
   transclusionPlugin,
   tabDropToTransclusion,
   autocompletion({ override: [fileLinkCompletions], activateOnTyping: true }),
@@ -105,8 +99,8 @@ export const extensions = [
     "&": { height: "100%" }
   }),
   keymap.of([
-    indentWithTab,         // Enable Tab to indent
-    ...defaultKeymap       // All standard shortcuts
+    indentWithTab,
+    ...defaultKeymap,
   ]),
   highlightSpecialChars(),
   history(),
@@ -124,125 +118,171 @@ export const extensions = [
   highlightSelectionMatches(),
   lineNumbers(),
   EditorView.lineWrapping,
-]
+];
 
-// Singleton CodeMirror instance
-let editorView: EditorView | null = null;
+// A StateEffect to reconfigure the Yjs collab binding dynamically
+const setYCollabEffect = StateEffect.define<Extension>();
+const collabDynamicExtension = EditorState.transactionExtender.of(tr => {
+  for (let e of tr.effects) {
+    if (e.is(setYCollabEffect)) {
+      return { effects: StateEffect.appendConfig.of([e.value]) };
+    }
+  }
+  return null;
+});
+// A StateField holding the current yCollab extension, default none
+const yCollabField = StateField.define<Extension>({
+  create() {
+    return [];
+  },
+  update(value, tr) {
+    for (let e of tr.effects) {
+      if (e.is(setYCollabEffect)) {
+        return e.value;
+      }
+    }
+    return value;
+  },
+  
+});
 
-type CMEditor = {
+function createYjsCollab(docId: string, userID: string, websocketUrl: string, initialContent = "") {
+  return new Promise<{ ydoc: Y.Doc; provider: WebsocketProvider; collabExtension: Extension }>(resolve => {
+    const ydoc = new Y.Doc();
+
+    // IndexedDB persistence for offline support
+    const persistence = new IndexeddbPersistence(docId, ydoc);
+    persistence.whenSynced.then(() => {
+      console.log("✅ IndexeddbPersistence synced");
+
+      const ytext = ydoc.getText("codemirror");
+
+      // Insert initial content only if ytext is empty
+      if (ytext.length === 0 && initialContent) {
+        ytext.insert(0, initialContent);
+        console.log("✅ Inserted initial content to empty Yjs doc");
+      }
+
+      // WebSocket provider for online collaboration
+      const provider = new WebsocketProvider(websocketUrl, docId, ydoc);
+      provider.awareness.setLocalStateField('user', { id: userID, name: userID });
+
+      // Resolve when the websocket sync is done
+      provider.once('sync', (isSynced: boolean) => {
+        if (isSynced) {
+          console.log("✅ WebSocket sync complete");
+          resolve({
+            ydoc,
+            provider,
+            collabExtension: yCollab(ytext, provider.awareness),
+          });
+        }
+      });
+
+      // Optional: Handle connection status changes
+      provider.on('status', (event: { status: string }) => {
+        console.log("WebSocket status:", event.status);
+      });
+    });
+  });
+}
+
+export type CMEditor = {
   view: EditorView;
   collab_enabled: boolean;
   setValue: (code: string) => void;
   getValue: () => string;
   destroy: () => void;
-  enableCollab: (version: number) => void;
+  bindCollaboration: (docId: string, websocketUrl: string) => void;
 };
-/**
- * Creates (or reuses) a CodeMirror editor instance and returns the view object.
- * @param container - DOM element to mount the editor into
- * @returns {EditorView | null}
- */
-/*
-export function newEditor(container: HTMLElement, options?: { startVersion?: number, collabMode?: boolean }): CMEditor {
-  const userID = getUserID()
-  let startVersion = 0;
-  if (options?.startVersion){
-    startVersion = options.startVersion
-  }
 
-  
-  const state = EditorState.create({
-    doc: "",
-    extensions: [
-      collab({ startVersion, clientID:userID }),
-      collabPlugin,
-      ...extensions,
-      ...outsideExtensions
-    ]
-  });
-
-  const view = new EditorView({
-    state,
-    parent: container    
-  });
-  
-  return {
-    view,
-    setValue: (docText: string) => {
-      view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: docText }
-      });
-    },
-    getValue: () => view.state.doc.toString(),
-    destroy: () => view.destroy(),
-  };
-}
-*/
-
-export function newEditor(container: HTMLElement, options?: { startVersion?: number, collabMode?: boolean }): CMEditor {
+export function newEditor(container: HTMLElement): CMEditor {
+  log.debug("Creating new editor")
   const userID = getUserID();
-  let collab_enabled = false;
 
-  let baseExtensions = [
-    ...extensions,
-    ...outsideExtensions
+  let ydoc: Y.Doc | null = null;
+  let yjsProvider: WebsocketProvider | null = null;
+
+  // Initial extensions WITHOUT yCollab binding
+  let extensions = [
+    ...baseExtensions,
+    ...outsideExtensions,
+    yCollabField,
+    collabDynamicExtension,
   ];
 
-  if (options?.collabMode && options.startVersion != null) {
-    baseExtensions = [
-      collab({ startVersion: options.startVersion, clientID: userID }),
-      collabPlugin,
-      ...baseExtensions
-    ];
-  } else {
-    baseExtensions = [
-      createAutoSavePlugin(saveFile, 500),
-      ...baseExtensions
-    ];
-  }
-
   const state = EditorState.create({
     doc: "",
-    extensions: baseExtensions
+    extensions,
   });
-
+  log.debug("State created")
+  
   const view = new EditorView({
     state,
-    parent: container
+    parent: container,
   });
+  log.debug("view created")
 
-  function enableCollab(startVersion: number) {
-    
-    if (this.collab_enabled == false){ 
-      log.debug("Enabling collaboration mode")
-      const newState = EditorState.create({
-        doc: view.state.doc,
-        extensions: [
-          collab({ startVersion, clientID: userID }),
-          collabPlugin,
-          pendingUpdatesPlugin,
-          ...extensions,
-          ...outsideExtensions
-        ]
-      });
-      view.setState(newState);
-      this.collab_enabled = true
-    } else {
-      log.debug("not enabling collaboration mode, already enabled.")
-    }
+  
+  // Dynamically bind Yjs collab to this editor instance
+  async function bindCollaboration(docId: string, initialContent = "") {
+    if (yjsProvider) yjsProvider.destroy();
+    if (ydoc) ydoc.destroy();
+  
+    const websocketUrl = `ws://${location.hostname}:11625/ws`;
+    const yjs = await createYjsCollab(docId, userID, websocketUrl, initialContent);
+  
+    ydoc = yjs.ydoc;
+    yjsProvider = yjs.provider;
+  
+    const ytext = ydoc.getText("codemirror");
+    const newDoc = ytext.toString();
+  
+    view.setState(EditorState.create({
+      doc: newDoc,
+      extensions: [
+        ...baseExtensions,
+        ...outsideExtensions,
+        yjs.collabExtension,
+        collabDynamicExtension,
+      ],
+    }));
+  
+    log.debug("✅ Collaboration bound and state preserved");
   }
+  
+  
+  log.debug("bindcollaboration defined")
+
+  log.debug("new editor created")
 
   return {
     view,
     collab_enabled: false,
     setValue: (docText: string) => {
-      view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: docText }
-      });
+      log.debug(ydoc);
+      if (ydoc) {
+        const ytext = ydoc.getText("codemirror"); 
+        if (ytext.length === 0) {
+          ytext.insert(0, "default");
+        }
+        ydoc.transact(() => {
+          ytext.delete(0, ytext.length);
+          ytext.insert(0, docText);
+        });
+      } else {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: docText },
+        });
+      }
     },
     getValue: () => view.state.doc.toString(),
-    destroy: () => view.destroy(),
-    enableCollab,
+    destroy: () => {
+      view.destroy();
+      if (yjsProvider) yjsProvider.destroy();
+      if (ydoc) ydoc.destroy();
+    },
+    bindCollaboration,
   };
 }
 
@@ -253,7 +293,7 @@ export function newEditor(container: HTMLElement, options?: { startVersion?: num
  */
 export async function openActiveEditorTab(filename?: string) {
   if (filename) {
-    await openEditorTab({paneId:EDITOR_PANE_ID, filename});
+    await openEditorTab({ paneId: EDITOR_PANE_ID, filename });
     return;
   }
 
@@ -261,41 +301,6 @@ export async function openActiveEditorTab(filename?: string) {
   if (activeTab) {
     switchToTab(EDITOR_PANE_ID, activeTab.id);
   } else {
-    await openEditorTab({paneId:EDITOR_PANE_ID, filename:"todo"});
+    await openEditorTab({ paneId: EDITOR_PANE_ID, filename: "todo" });
   }
-}
-
-export function resetEditorStateFromServerInit(
-  docId: string,
-  docText: string,
-  version: number,
-  mode: string
-) {
-  const pane = getPaneByDocID(docId);
-  const view = pane?.editorInstance.view;
-
-  if (!view) {
-    console.error("❌ No editor view found for doc", docId);
-    return;
-  }
-  log.debug("here")
-  const clientID = getUserID();
-  const newText = Text.of(docText.split("\n"));
-
-  const newState = EditorState.create({
-    doc: newText,
-    extensions: [
-      collab({ startVersion: version, clientID }),
-      collabPlugin,
-      ...extensions,
-      ...outsideExtensions,
-    ],
-  });
-
-  view.setState(newState);
-
-  setActiveDocId(docId);
-  setDocumentMode(docId, mode);
-
-  console.debug(`✅ Reset editor state for doc ${docId} at version ${version}`);
 }
