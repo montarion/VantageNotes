@@ -6,7 +6,7 @@ import {
     ViewUpdate,
     WidgetType,
   } from "npm:@codemirror/view";
-  import { RangeSetBuilder } from "npm:@codemirror/state";
+  import { RangeSetBuilder, TransactionSpec } from "npm:@codemirror/state";
   import { isRangeSelected, ZeroWidthWidget } from "../common/pluginhelpers.ts";
   import { metadataStore, Hyperlink, Imagelink } from "./metadata.ts";
   import { Logger } from "../common/logger.ts";
@@ -213,4 +213,42 @@ const log = new Logger({ namespace: "hyperlinks", minLevel: "debug" });
       decorations: (plugin) => plugin.decorations,
     }
   );
-  
+
+// This extension intercepts paste events
+export const pasteLinkOnSelection = EditorView.domEventHandlers({
+  paste(event, view) {
+    const clipboardData = event.clipboardData;
+    if (!clipboardData) return false;
+
+    const text = clipboardData.getData("text/plain").trim();
+    const urlPattern = /^https?:\/\/[^\s<>()]+$/;
+
+    if (!urlPattern.test(text)) return false; // Only trigger if it's a plain URL
+
+    const { state } = view;
+    const selection = state.selection;
+
+    if (selection.ranges.some(r => !r.empty)) {
+      // Build replacement: [selected text](url)
+      const changes = selection.ranges.map(range => {
+        const selectedText = state.doc.sliceString(range.from, range.to);
+        return {
+          from: range.from,
+          to: range.to,
+          insert: `[${selectedText}](${text})`
+        };
+      });
+
+      const tr: TransactionSpec = {
+        changes,
+        selection: { anchor: selection.main.from + 1 } // Puts cursor inside link text
+      };
+
+      view.dispatch(state.update(tr));
+      event.preventDefault();
+      return true;
+    }
+
+    return false;
+  }
+});
