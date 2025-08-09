@@ -5,7 +5,8 @@ import {
   Decoration,
   keymap
 } from "npm:@codemirror/view";
-import { StateField } from "npm:@codemirror/state";
+
+import { runLua } from "../common/lua.ts";
 import { Logger } from '../common/logger.ts';
 
 const log = new Logger({ namespace: 'Slashcommands', minLevel: 'debug' });
@@ -20,7 +21,8 @@ export const SlashCommandPlugin = ViewPlugin.fromClass(class {
     { name: "today", label: "Insert today’s date", insert: `[[Dailies/${this.currentDate(new Date())}]]` },
     { name: "time", label: "Insert current time", insert: `${this.currentTime()}` },
     { name: "toggle task", label: "Toggle the current task", run: this.toggleCurrentTask },
-    { name: "warning", label: "Insert warning callout", insert: "> **warning** Warning\n> "} 
+    { name: "warning", label: "Insert warning callout", insert: "> **warning** Warning\n> "},
+    { name: "lua", label: "Run lua code", run: runLua("i = 0")} 
   ];
   selectedIndex = 0;
   menuItems: HTMLElement[] = [];
