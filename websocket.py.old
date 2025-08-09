@@ -1,0 +1,16 @@
+# websocket.py
+import asyncio
+from ypy_websocket import WebsocketServer, ASGIServer
+import uvicorn
+
+
+
+#TODO: save document to file
+async def start_yjs_server(host="0.0.0.0", port=1234):
+
+    websocket_server = WebsocketServer()
+    app = ASGIServer(websocket_server)
+    config = uvicorn.Config(app, host=host, port=port, log_level="info")
+    server = uvicorn.Server(config)
+    async with websocket_server:
+        await server.serve()
