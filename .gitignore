@@ -1,5 +1,8 @@
 # Ignore private files
 _*
+# Ignore testing and dist
+tests/
+static/dist/
 
 # Ignore notes
 static/notes
@@ -104,3 +107,8 @@ typings/
 .dynamodb/
 
 _dist
+
+
+# Added by cargo
+
+/target
