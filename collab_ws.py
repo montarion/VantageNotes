@@ -35,6 +35,9 @@ class SnapshotRoom(YRoom):
         self.save_counter = 0
         self.save_interval = save_interval
 
+        # Track our own writes to avoid reloading them
+        self._last_save_mtime: float | None = None
+
         # New: for detecting external changes
         self._watch_task = None
 
@@ -64,12 +67,20 @@ class SnapshotRoom(YRoom):
 
     async def _watch_file_changes(self):
         async for changes in awatch(self.path):
-            # Schedule CRDT merge safely on the current loop
+            try:
+                mtime = os.path.getmtime(self.path)
+            except FileNotFoundError:
+                continue
+
+            # Skip if this change is from our own write
+            if self._last_save_mtime and abs(mtime - self._last_save_mtime) < 0.01:
+                continue
+
+            log.debug(f"External file change detected for {self.path}: {changes}")
             asyncio.get_event_loop().create_task(self._merge_file_changes())
 
-
     async def _merge_file_changes(self):
-        """Read file content and merge into ydoc."""
+        """Read file content and merge into ydoc (external only)."""
         try:
             async with aiofiles.open(self.path, 'r') as f:
                 new_content = await f.read()
@@ -77,10 +88,7 @@ class SnapshotRoom(YRoom):
             current_content = ytext.to_py()
 
             if new_content != current_content:
-                # simple merge strategy: insert diff at start (or implement smarter merge)
                 log(f"Merging {len(new_content)} bytes from disk into ydoc")
-                # naive approach: replace all content
-                #ytext.delete(0, len(current_content))
                 ytext.clear()
                 ytext.insert(0, new_content)
         except Exception as e:
@@ -94,13 +102,18 @@ class SnapshotRoom(YRoom):
             # no updates yet
             pass
 
-    async def save_document(self, text):
+    async def save_document(self, text: str):
         if len(text) == 0:
             return
         if self.save_counter >= self.save_interval:
             async with aiofiles.open(self.path, 'w') as f:
                 await f.write(text)
-                
+
+            try:
+                self._last_save_mtime = os.path.getmtime(self.path)
+            except FileNotFoundError:
+                self._last_save_mtime = None
+
             self.save_counter = 0
         else:
             self.save_counter += 1
