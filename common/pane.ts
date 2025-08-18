@@ -3,12 +3,13 @@
 import { newEditor } from "./editor.ts";
 import { fetchFileTree, loadFile } from "./navigation.ts";
 import { updateBreadcrumb, showSaveStatus } from "./topbar.ts";
-import { showMetadataPanel } from './metadatapanel.ts';
+import { showMetadataPanel } from '../common/metadata.ts';
 import { Logger } from "./logger.ts";
+const log = new Logger({ namespace: "Pane", minLevel: "debug" });
 import { shortUUID } from "./pluginhelpers.ts";
 import { Tab, renderTabsUI, setupDragAndDrop, switchToTab } from "./tabs.ts";
 
-const log = new Logger({ namespace: "Pane", minLevel: "debug" });
+
 
 export type Pane = {
     id: string;
@@ -54,8 +55,7 @@ export function GetPane(paneId?: string): Pane {
     document.querySelector(".app")?.append(paneEl);
 
     const editor = newEditor(tabContent);
-    log.debug("editor created")
-    //linkEditorView(editor)
+    
   
     const paneObj: Pane = {
       id: paneId,
@@ -63,7 +63,7 @@ export function GetPane(paneId?: string): Pane {
       activeTabId: "",
       tabBarEl: tabBar,
       contentEl: tabContent,
-      editorInstance: editor,
+      editorInstance: editor
     };
   
   
@@ -259,13 +259,8 @@ function setupPaneDragZones(paneEl: HTMLElement, paneId: string) {
   });
   
 export function getPaneByDocID(docID: string): Pane | undefined {
-  log.warn(panes)
   for (const pane of panes.values()) {
-    log.warn(pane)
     for (const tab of pane.tabs.values()) {
-      log.warn(tab)
-      log.debug("tab title:", tab.title)
-      log.debug("docID", docID)
       if (tab.title === docID) {
         return pane;
       }

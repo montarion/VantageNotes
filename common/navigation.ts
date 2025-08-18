@@ -53,7 +53,6 @@ export function updateFuseWithFilenames(newList: string[]) {
   fuse = new Fuse(newList, { includeScore: true, threshold: 0.4 });
 }
 export async function fetchFileTree(treeEl: HTMLElement = document.createElement("div")): Promise<HTMLElement> {
-  log.debug("fetching filetree");
   const tree = await getFileList()
   treeEl.innerHTML = "";
   renderTree(tree, treeEl);
@@ -71,6 +70,7 @@ export async function generateNavigation(paneId = "pane1") {
 }
 
 export async function loadFile(filename: string): Promise<string> {
+  // first check cache/metadatastore
   const response = await fetch("/notes/" + filename);
   if (!response.ok) return "";
   return await response.text();
@@ -94,7 +94,6 @@ export async function saveFile(text: string, filename: string | null = null) {
     if (!activeTab) {
       return;
     }
-    log.debug(activeTab)
     filename = activeTab.title;
   }
 

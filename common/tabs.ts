@@ -2,10 +2,11 @@
 
 import { fetchFileTree, loadFile } from "./navigation.ts";
 import { updateBreadcrumb, showSaveStatus } from "./topbar.ts";
-import { showMetadataPanel } from './metadatapanel.ts';
+import { showMetadataPanel, PageMetadata, getMetadata } from '../common/metadata.ts';
 import { Logger } from "./logger.ts";
 import { shortUUID } from "./pluginhelpers.ts";
 import { GetPane, getActivePane, getPaneContent, handleTabDropToNewPane, removePane, setActivePane } from "./pane.ts";
+import { CMEditor, newEditor } from "./editor.ts";
 
 const log = new Logger({ namespace: "Tabs", minLevel: "debug" });
 
@@ -16,6 +17,7 @@ export type Tab = {
   id: string;
   title: string;
   contentEl: HTMLElement;
+  metadata: PageMetadata;
   isEditor?: boolean;
 };
 
@@ -24,7 +26,6 @@ type TabCreation = {
   tabId?: string;
   title: string;
   contentEl: HTMLElement;
-
   isEditor?: boolean;
 }
 const tabsByPane = new Map<string, Map<string, Tab>>();
@@ -60,7 +61,7 @@ export function createTab({
     switchToTab(paneId, tabId);
     return pane.tabs.get(tabId)!;
   }
-
+  let metadata: PageMetadata;
   // Attach the tab content element to the pane content container
   const paneContentContainer = getPaneContent(paneId) //document.getElementById(`${paneId}-content`);
   if (!paneContentContainer) {
@@ -72,17 +73,21 @@ export function createTab({
 
   // ⬅️ This ensures the element is in the DOM before CodeMirror initializes
   //paneContentContainer.appendChild(contentEl);
+
+  let tabobj = { id: tabId, title, contentEl, isEditor }
   if (!isEditor){
     paneContentContainer.innerHTML = ""
     paneContentContainer.append(contentEl)
   } else {
+    // get metadata
+    metadata = getMetadata(contentEl.textContent);
+    tabobj["metadata"] = metadata
     //pane.editorInstance?.setValue(contentEl.textContent)
   }
-  
+  //let editorInstance = newEditor(paneContentContainer)
+  const tab: Tab = tabobj;
   // Register the tab
-  const tab: Tab = { id: tabId, title, contentEl, isEditor };
   allTabs.set(tabId, tab);
-  log.debug("list of tabs: ", allTabs)
   pane.tabs.set(tabId, tab);
 
   renderTabsUI(paneId);
@@ -123,14 +128,18 @@ export function removeActiveClass(paneId: string){
 export function switchToTab(paneId: string, tabId: string) {
   const pane = GetPane(paneId);
   const tab = pane.tabs.get(tabId);
+  log.debug("switching to tab:", tab.title)
+
   if (!tab) return;
 
   pane.activeTabId = tabId;
 
+  setActiveTab(tab.id)
+
   if (tab.isEditor) {
-    
-    pane.editorInstance.bindCollaboration(tab.title, tab.contentEl.textContent);
     //pane.editorInstance?.setValue(tab.contentEl.textContent)
+    pane.editorInstance?.bindCollaboration(tab.title);
+    //pane.editorInstance?.setValue("fireflies atnight")
     
   } else {
     // For non-editor tabs, show the tab content
@@ -138,11 +147,12 @@ export function switchToTab(paneId: string, tabId: string) {
     pane.contentEl.append(tab.contentEl);
   }
   //setContent(paneId, tab.id)
-  setActiveTab(tab.id)
   setActivePane(paneId)
-  updateBreadcrumb(tab.title)
+  //updateBreadcrumb(tab.title)
   showMetadataPanel(tab.title)
   renderTabsUI(paneId);
+
+
   
 }
 
@@ -172,9 +182,11 @@ function closeTab(paneId: string, tabId: string) {
   if (!paneTabs || !allTabs || !tabBar) return;
 
   // Remove from in-memory maps
+  let Tabs = pane.tabs.get(tabId);
+
   paneTabs?.delete(tabId);
   allTabs.delete(tabId)
-
+  
   log.debug("Removing tab: ", tabId)
 
   // Remove tab from DOM
@@ -185,7 +197,7 @@ function closeTab(paneId: string, tabId: string) {
   // If the closed tab was active
   const wasActive = pane.activeTabId === tabId;
   if (wasActive) {
-    pane.editorInstance?.setValue("[new tab menu]");
+    //pane.editorInstance?.setValue("[new tab menu]");
 
     // Try activating another tab (most recently added one)
     const remainingTabs = Array.from(paneTabs.keys());
@@ -226,7 +238,6 @@ export function renderTabsUI(paneId: string) {
   const pane = GetPane(paneId);
   let tabBar = pane.tabBarEl;
   tabBar.innerHTML = "";
-  log.debug("pane.tabs:", pane.tabs)
   for (const [tabId, tab] of pane.tabs) {
     const tabEl = document.createElement("div");
     tabEl.className = "tab";
@@ -281,9 +292,6 @@ export function renderTabsUI(paneId: string) {
 }
 
 
-function saveTabs() {
-  log.debug("trying to save tabs!")
-}
 
 async function restoreTabs() {
   log.debug("Trying to restore tabs!")
@@ -528,6 +536,7 @@ export function setupDragAndDrop(tabBar: HTMLElement, paneId: string) {
 }
 
 
+
 /**
  * Opens an editor tab in the specified pane with the given file.
  * Creates the tab if it doesn't exist and loads file content into the editor.
@@ -539,6 +548,7 @@ export async function openEditorTab({paneId, filename}) {
   if (!paneId){
     paneId = getActivePane()
   }
+  
   const pane = GetPane(paneId);
 
   // Load the file's content
@@ -559,6 +569,7 @@ export async function openEditorTab({paneId, filename}) {
     contentEl,
     isEditor: true,
   });
+
 
 
 
