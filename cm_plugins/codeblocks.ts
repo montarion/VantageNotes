@@ -5,7 +5,7 @@ import { ViewPlugin, Decoration, DecorationSet, WidgetType  } from "npm:@codemir
 import { RangeSetBuilder } from "npm:@codemirror/state";
 
 import { isRangeSelected, ZeroWidthWidget } from "../common/pluginhelpers.ts";
-import { metadataStore, CodeBlock } from "./metadata.ts";
+import { metadataStore, CodeBlock } from "../common/metadata.ts";
 
 import { Logger } from '../common/logger.ts';
 import { runCode, runnerMap } from "./jsworker.ts";

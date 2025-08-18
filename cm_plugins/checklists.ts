@@ -2,7 +2,7 @@ import { EditorView, Decoration, DecorationSet, ViewPlugin, ViewUpdate, WidgetTy
 import { RangeSetBuilder } from "npm:@codemirror/state";
 import { eventBus } from "../common/events.ts";
 import { isRangeSelected, ZeroWidthWidget } from "../common/pluginhelpers.ts";
-import { metadataStore, Task } from "./metadata.ts";
+import { metadataStore, Task } from "../common/metadata.ts";
 import { Logger } from '../common/logger.ts';
 const log = new Logger({ namespace: 'Checklists', minLevel: 'debug' });
 // Regex to match checklist items with optional indent, checkbox, and task text

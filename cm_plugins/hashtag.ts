@@ -6,7 +6,7 @@ import {
   ViewUpdate,
 } from "npm:@codemirror/view";
 import { Extension, RangeSetBuilder } from "npm:@codemirror/state";
-import { metadataStore, Tag } from "./metadata.ts";
+import { metadataStore, Tag } from "../common/metadata.ts";
 import { Logger } from '../common/logger.ts';
 const log = new Logger({ namespace: 'Hashtag', minLevel: 'debug' });
 // Matches tags that end with space, newline or end of line

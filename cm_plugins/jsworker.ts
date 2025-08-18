@@ -1,7 +1,7 @@
 import { ViewPlugin } from "npm:@codemirror/view";
 import { Logger } from "../common/logger.ts";
 import { htmlOutputPerBlockPlugin, setHtmlOutput } from "./htmlOutputPlugin.ts";
-import { CodeBlock } from "./metadata.ts";
+import { CodeBlock } from "../common/metadata.ts";
 import { getActiveTab } from "../common/tabs.ts";
 import { getMetadata } from "../common/metadata.ts";
 import { loadFile } from "../common/navigation.ts";

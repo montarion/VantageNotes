@@ -7,7 +7,7 @@ import {
 } from "npm:@codemirror/view";
 import { Extension, RangeSetBuilder } from "npm:@codemirror/state";
 import { isRangeSelected, ZeroWidthWidget } from "../common/pluginhelpers.ts";
-import { metadataStore, Header } from "./metadata.ts";
+import { metadataStore, Header } from "../common/metadata.ts";
 
 const headerMatcher = /^(#{1,6})\s+(.*)$/;
 

@@ -1,7 +1,7 @@
 import { Decoration, DecorationSet, ViewPlugin, ViewUpdate, WidgetType, EditorView } from "npm:@codemirror/view";
 import { RangeSetBuilder } from "npm:@codemirror/state";
 import { isRangeSelected } from "../common/pluginhelpers.ts";
-import { metadataStore, Wikilink } from "./metadata.ts";
+import { metadataStore, Wikilink } from "../common/metadata.ts";
 import { openEditorTab } from "../common/tabs.ts";
 import { loadFile } from "../common/navigation.ts"; // <-- your existing async loader
 import { Logger } from "../common/logger.ts";

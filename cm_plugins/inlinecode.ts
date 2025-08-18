@@ -7,7 +7,7 @@ import {
   } from "npm:@codemirror/view";
 import { RangeSetBuilder } from "npm:@codemirror/state";
 import { isRangeSelected, ZeroWidthWidget } from "../common/pluginhelpers.ts";
-import { metadataStore, Task } from "./metadata.ts";
+import { metadataStore, Task } from "../common/metadata.ts";
 
   // Match `code` (inline code with single backticks, excluding multiline)
 const inlineCodeRegex = /`([^`\n]+?)`/g;

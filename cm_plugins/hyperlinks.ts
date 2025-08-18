@@ -8,7 +8,7 @@ import {
   } from "npm:@codemirror/view";
   import { RangeSetBuilder, TransactionSpec } from "npm:@codemirror/state";
   import { isRangeSelected, ZeroWidthWidget } from "../common/pluginhelpers.ts";
-  import { metadataStore, Hyperlink, Imagelink } from "./metadata.ts";
+  import { metadataStore, Hyperlink, Imagelink } from "../common/metadata.ts";
   import { Logger } from "../common/logger.ts";
 
 const log = new Logger({ namespace: "hyperlinks", minLevel: "debug" });
