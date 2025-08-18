@@ -64,10 +64,12 @@ import { tabDropToTransclusion } from '../cm_plugins/tabdropTransclusion.ts';
 import * as Y from 'npm:yjs';
 import { yCollab } from 'npm:y-codemirror.next';
 import { WebsocketProvider } from 'npm:y-websocket';
-import { IndexeddbPersistence } from 'npm:y-indexeddb';
 
 import { getUserID } from '../common/pluginhelpers.ts';
-
+import { loadFile } from './navigation.ts';
+import { updateBreadcrumb } from './topbar.ts';
+import { registerJsRunner } from '../cm_plugins/jsworker.ts';
+import { htmlOutputField, htmlOutputPerBlockPlugin } from '../cm_plugins/htmlOutputPlugin.ts';
 const EDITOR_PANE_ID = "main"; // Your main editor pane id
 
 const log = new Logger({ namespace: 'Editor', minLevel: 'debug' });
@@ -76,7 +78,6 @@ const log = new Logger({ namespace: 'Editor', minLevel: 'debug' });
 export const outsideExtensions = [
   transclusionActiveField,
 ];
-
 // Main set of editor extensions, plugins and UI features (non-collab)
 export const baseExtensions = [
   SlashCommandPlugin,
@@ -118,6 +119,9 @@ export const baseExtensions = [
   highlightSelectionMatches(),
   lineNumbers(),
   EditorView.lineWrapping,
+  htmlOutputField,
+  htmlOutputPerBlockPlugin
+  
 ];
 
 // A StateEffect to reconfigure the Yjs collab binding dynamically
@@ -146,145 +150,184 @@ const yCollabField = StateField.define<Extension>({
   
 });
 
-function createYjsCollab(docId: string, userID: string, websocketUrl: string, initialContent = "") {
+
+async function getOrCreateYjsDoc(docId: string, initialContent: string) {
+  const websocketUrl = `ws://${location.hostname}:11625/ws`;
+  return await createYjsCollab(docId, getUserID(), websocketUrl, initialContent);
+}
+
+function createYjsCollab(docId: string, userID: string, websocketUrl: string) {
   return new Promise<{ ydoc: Y.Doc; provider: WebsocketProvider; collabExtension: Extension }>(resolve => {
     const ydoc = new Y.Doc();
+    const ytext = ydoc.getText(docId);
 
-    // IndexedDB persistence for offline support
-    const persistence = new IndexeddbPersistence(docId, ydoc);
-    persistence.whenSynced.then(() => {
-      console.log("✅ IndexeddbPersistence synced");
+    const provider = new WebsocketProvider(websocketUrl, docId, ydoc);
+    provider.awareness.setLocalStateField("user", { id: userID, name: userID });
 
-      const ytext = ydoc.getText("codemirror");
-
-      // Insert initial content only if ytext is empty
-      if (ytext.length === 0 && initialContent) {
-        ytext.insert(0, initialContent);
-        console.log("✅ Inserted initial content to empty Yjs doc");
-      }
-
-      // WebSocket provider for online collaboration
-      const provider = new WebsocketProvider(websocketUrl, docId, ydoc);
-      provider.awareness.setLocalStateField('user', { id: userID, name: userID });
-
-      // Resolve when the websocket sync is done
-      provider.once('sync', (isSynced: boolean) => {
-        if (isSynced) {
-          console.log("✅ WebSocket sync complete");
-          resolve({
-            ydoc,
-            provider,
-            collabExtension: yCollab(ytext, provider.awareness),
-          });
-        }
+    provider.once("sync", (isSynced: boolean) => {
+      console.log("✅ WebSocket sync complete");
+      resolve({
+        ydoc,
+        provider,
+        collabExtension: yCollab(ytext, provider.awareness),
       });
+    });
 
-      // Optional: Handle connection status changes
-      provider.on('status', (event: { status: string }) => {
-        console.log("WebSocket status:", event.status);
-      });
+    provider.on("status", (event: { status: string }) => {
+      console.log("WebSocket status:", event.status);
     });
   });
 }
 
+
 export type CMEditor = {
   view: EditorView;
   collab_enabled: boolean;
-  setValue: (code: string) => void;
+  setValue: (docId: string, code: string) => void;
   getValue: () => string;
   destroy: () => void;
   bindCollaboration: (docId: string, websocketUrl: string) => void;
+  getInstance: () => void;
 };
 
 export function newEditor(container: HTMLElement): CMEditor {
-  log.debug("Creating new editor")
-  const userID = getUserID();
+  log.debug("Creating new editor");
+  //container.innerHTML = ""
 
-  let ydoc: Y.Doc | null = null;
-  let yjsProvider: WebsocketProvider | null = null;
+  // StateEffect and StateField scoped per editor instance
+  const setCollabBinding = StateEffect.define<{ ydoc: Y.Doc | null; provider: WebsocketProvider | null }>();
 
-  // Initial extensions WITHOUT yCollab binding
-  let extensions = [
-    ...baseExtensions,
-    ...outsideExtensions,
-    yCollabField,
-    collabDynamicExtension,
-  ];
+  const collabStateField = StateField.define<{ ydoc: Y.Doc | null; provider: WebsocketProvider | null }>({
+    create() {
+      return { ydoc: null, provider: null };
+    },
+    update(value, tr) {
+      for (let ef of tr.effects) {
+        if (ef.is(setCollabBinding)) return ef.value;
+      }
+      return value;
+    }
+  });
 
+  // Create initial editor state without collab binding
   const state = EditorState.create({
     doc: "",
-    extensions,
+    extensions: [
+      ...baseExtensions,
+      ...outsideExtensions,
+      collabStateField
+    ]
   });
-  log.debug("State created")
-  
+
   const view = new EditorView({
     state,
-    parent: container,
+    parent: container
   });
-  log.debug("view created")
 
-  
-  // Dynamically bind Yjs collab to this editor instance
   async function bindCollaboration(docId: string, initialContent = "") {
-    if (yjsProvider) yjsProvider.destroy();
-    if (ydoc) ydoc.destroy();
-  
+    log.debug(`Binding collaboration for docId=${docId}`);
+
+    // Clean up old provider and Y.Doc if any
+    const oldBinding = view.state.field(collabStateField, false);
+    if (oldBinding?.provider) {
+      log.debug("Destroying old provider");
+      oldBinding.provider.awareness.setLocalState(null);
+      oldBinding.provider.destroy();
+    }
+    if (oldBinding?.ydoc) {
+      oldBinding.ydoc.destroy();
+    }
+
+    // Create new Y.Doc and provider
     const websocketUrl = `ws://${location.hostname}:11625/ws`;
-    const yjs = await createYjsCollab(docId, userID, websocketUrl, initialContent);
-  
-    ydoc = yjs.ydoc;
-    yjsProvider = yjs.provider;
-  
-    const ytext = ydoc.getText("codemirror");
-    const newDoc = ytext.toString();
-  
+    const ydoc = new Y.Doc();
+
+    updateBreadcrumb(docId);
+
+    const provider = new WebsocketProvider(websocketUrl, docId, ydoc);
+    provider.awareness.setLocalStateField("user", {
+      id: getUserID(),
+      name: getUserID(),
+    });
+
+    provider.on("status", e => log.debug(`[WS ${docId}] status: ${e.status}`));
+
+    await new Promise<void>(resolve => provider.once("sync", () => resolve()));
+
+    // Load initial content if Y.Text is empty
+    const ytext = ydoc.getText(docId);
+    if (ytext.length === 0) {
+      initialContent = await loadFile(docId);
+      if (initialContent) ytext.insert(0, initialContent);
+    }
+
+    // Rebuild editor state with yCollab
     view.setState(EditorState.create({
-      doc: newDoc,
+      doc: ytext.toString(),
       extensions: [
         ...baseExtensions,
         ...outsideExtensions,
-        yjs.collabExtension,
+        yCollab(ytext, provider.awareness),
         collabDynamicExtension,
-      ],
+        collabStateField,
+        //jsRunner()
+      ]
     }));
-  
-    log.debug("✅ Collaboration bound and state preserved");
-  }
-  
-  
-  log.debug("bindcollaboration defined")
 
-  log.debug("new editor created")
+    // Track new binding for cleanup
+    view.dispatch({ effects: setCollabBinding.of({ ydoc, provider }) });
+
+    registerJsRunner(view);
+  }
+
+  function updateFromServer(newText: string) {
+    const { ydoc } = view.state.field(collabStateField);
+    if (!ydoc) {
+      log.debug("No Y.Doc bound; cannot update from server");
+      return;
+    }
+    const ytext = ydoc.getText(docId);
+    ydoc.transact(() => {
+      ytext.delete(0, ytext.length);
+      ytext.insert(0, newText);
+    });
+    log.debug("Updated editor content from server push");
+  }
 
   return {
     view,
-    collab_enabled: false,
-    setValue: (docText: string) => {
-      log.debug(ydoc);
-      if (ydoc) {
-        const ytext = ydoc.getText("codemirror"); 
-        if (ytext.length === 0) {
-          ytext.insert(0, "default");
-        }
-        ydoc.transact(() => {
-          ytext.delete(0, ytext.length);
-          ytext.insert(0, docText);
-        });
-      } else {
+    collab_enabled: Boolean(view.state.field(collabStateField).ydoc),
+    setValue: (docId: string, docText: string) => {
+      const { ydoc } = view.state.field(collabStateField);
+      if (!ydoc) {
         view.dispatch({
-          changes: { from: 0, to: view.state.doc.length, insert: docText },
+          changes: { from: 0, to: view.state.doc.length, insert: docText }
         });
+        return;
       }
+      const ytext = ydoc.getText(docId);
+      ydoc.transact(() => {
+        ytext.delete(0, ytext.length);
+        ytext.insert(0, docText);
+      });
     },
     getValue: () => view.state.doc.toString(),
     destroy: () => {
-      view.destroy();
-      if (yjsProvider) yjsProvider.destroy();
+      const { ydoc, provider } = view.state.field(collabStateField);
+      if (provider) {
+        provider.awareness.setLocalState(null);
+        provider.destroy();
+      }
       if (ydoc) ydoc.destroy();
+      view.destroy();
     },
     bindCollaboration,
+    updateFromServer,
   };
 }
+
+
+
 
 /**
  * Opens the currently active editor tab or opens the specified filename in the editor pane.
