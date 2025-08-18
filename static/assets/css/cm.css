@@ -121,7 +121,7 @@
 }
 
 .cm-codeblock-label {
-  background: #8d8d8d;
+  background: #1f1e1e;
   color: #ececec;
   font-style: italic;
   padding-left: 0.5em;
@@ -133,7 +133,12 @@
 .cm-codeblock {
   background: #2e2f3d;
   color: #ececec;
+}
 
+.cm-codeblock.cm-activeLine,
+.cm-codeblock-label.cm-activeLine{
+  background-color: #19293a;
+  color: #ececec;
 }
 
 .cm-blockquote,
@@ -160,7 +165,7 @@
 }
 
 .cm-inline-code {
-  background-color: #bfbdbd;
+  background-color: #1d1818;
   color: #302630;
   font-family: monospace;
   padding: 0 0.25em;
