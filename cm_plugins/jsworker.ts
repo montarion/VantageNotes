@@ -1,6 +1,6 @@
 import { ViewPlugin } from "npm:@codemirror/view";
 import { Logger } from "../common/logger.ts";
-import { htmlOutputPerBlockPlugin } from "./htmlOutputPlugin.ts";
+import { applyHtmlOutputs, htmlOutputPerBlockPlugin, setOutput } from "./htmlOutputPlugin.ts";
 import { CodeBlock } from "../common/metadata.ts";
 import { getActiveTab } from "../common/tabs.ts";
 import { getMetadata } from "../common/metadata.ts";
@@ -75,8 +75,11 @@ export async function runCode(view: any, codeblock: CodeBlock, timeoutMs = 2000)
     
       switch (data.type) {
         case "render":
-          const plugin = view.plugin(htmlOutputPerBlockPlugin);
-          plugin?.setOutput(codeblock, data.html);
+          setOutput(view, { 
+            fromLine: codeblock.fromLine, 
+            toLine: codeblock.toLine, 
+            html: data.html 
+          });
           break;
     
         case "log":
@@ -115,7 +118,7 @@ export async function runCode(view: any, codeblock: CodeBlock, timeoutMs = 2000)
           runner.worker.postMessage({ callbackId: data.callbackId, value: res});
         case "foldLines":
           log.warn("trying to fold lines!")
-          foldLines(data.from, data.to)
+          //foldLines(data.from, data.to)
           break;
         default: // really what you'd want is to render everything that's returned at the end..
           runner.worker.postMessage({ callbackId: data.callbackId, value: `Unknown method: ${data.type}`});
