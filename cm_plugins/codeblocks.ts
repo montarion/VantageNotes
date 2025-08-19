@@ -8,10 +8,11 @@ import { isRangeSelected, ZeroWidthWidget } from "../common/pluginhelpers.ts";
 import { metadataStore, CodeBlock } from "../common/metadata.ts";
 
 import { Logger } from '../common/logger.ts';
+const log = new Logger({ namespace: 'Codeblocks', minLevel: 'debug' });
 import { runCode, runnerMap } from "./jsworker.ts";
 import { getActivePane, GetPane } from "../common/pane.ts";
 import { htmlOutputPerBlockPlugin } from "./htmlOutputPlugin.ts";
-const log = new Logger({ namespace: 'Codeblocks', minLevel: 'debug' });
+
 
 // A widget to show the codeblock label (e.g. "css", "javascript")
 class CodeblockLabelWidget extends WidgetType {
