@@ -16,7 +16,7 @@ import {
 // Language-related features
 import {
   defaultHighlightStyle, syntaxHighlighting, indentOnInput,
-  bracketMatching, foldEffect, foldCode, foldGutter
+  bracketMatching
 } from "npm:@codemirror/language";
 
 // Editing history and keymaps
@@ -69,7 +69,7 @@ import { getUserID } from '../common/pluginhelpers.ts';
 import { loadFile } from './navigation.ts';
 import { updateBreadcrumb } from './topbar.ts';
 import { registerJsRunner } from '../cm_plugins/jsworker.ts';
-import { htmlOutputPerBlockPlugin } from '../cm_plugins/htmlOutputPlugin.ts';
+import { htmlOutputField, htmlOutputPerBlockPlugin, htmlOutputTheme } from '../cm_plugins/htmlOutputPlugin.ts';
 import { autoUnfoldPlugin } from '../cm_plugins/autoUnfoldPlugin.ts';
 import { GetPane, getActivePane } from './pane.ts';
 
@@ -118,13 +118,14 @@ export const baseExtensions = [
   autocompletion(),
   rectangularSelection(),
   crosshairCursor(),
-  highlightActiveLine(),
-  highlightSelectionMatches(),
-  lineNumbers(),
+  //highlightActiveLine(),
+  //highlightSelectionMatches(),
+  //lineNumbers(),
   EditorView.lineWrapping,
   //htmlOutputField,
+  htmlOutputField,
   htmlOutputPerBlockPlugin,
-  foldGutter(),
+  htmlOutputTheme,
   //autoUnfoldPlugin
   
 ];
