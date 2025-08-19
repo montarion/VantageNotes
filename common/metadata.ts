@@ -4,6 +4,7 @@ import { Logger } from './logger.ts';
 import { loadFile } from './navigation.ts';
 import { getActivePane } from './pane.ts';
 import { getActiveTab, openEditorTab } from './tabs.ts';
+import yaml from 'npm:js-yaml';
 
 const log = new Logger({ namespace: 'Metadata', minLevel: 'debug' });
 
@@ -24,7 +25,6 @@ export interface Wikilink { target: string; alias?: string; line: number; contex
 export interface Hyperlink { url: string; label: string; line: number; context: string; }
 export interface Imagelink { url: string; altText: string; line: number; context: string; }
 export interface PageMetadata {
-  text: string;
   lineCount: number;
   tags: Tag[];
   headers: Header[];
@@ -33,11 +33,14 @@ export interface PageMetadata {
   wikilinks: Wikilink[];
   hyperlinks: Hyperlink[];
   images: Imagelink[];
+  frontmatter?: Record<string, any>;
+  text: string;
 }
 
 // ---------- Metadata Store ----------
 class MetadataStore {
-  private text: String;
+  private text: string;
+  private frontmatter: Record<string, any>;
   private tags: Tag[] = [];
   private headers: Header[] = [];
   private tasks: Task[] = [];
@@ -100,7 +103,6 @@ class MetadataStore {
   getMetadata(): PageMetadata {
 
     return {
-      text: this.text,
       lineCount: this.lineCount,
       tags: this.tags,
       headers: this.headers,
@@ -108,7 +110,9 @@ class MetadataStore {
       codeBlocks: this.codeBlocks,
       wikilinks: this.wikilinks,
       hyperlinks: this.hyperlinks,
-      images: this.images
+      images: this.images,
+      text: this.text,
+      frontmatter: this.frontmatter
     };
   }
 }
@@ -116,9 +120,27 @@ class MetadataStore {
 export const metadataStore = new MetadataStore();
 
 // ---------- Metadata Extraction ----------
-export function extractMetadataFromText(text: string): PageMetadata{
+export function extractMetadataFromText(text: string): PageMetadata {
   const lines = text.split(/\r?\n/);
 
+  let frontmatter: Record<string, any> | undefined;
+  let contentStart = 0;
+
+  // ---------- Frontmatter ----------
+  if (lines[0].trim() === "---") {
+    const endIndex = lines.findIndex((line, i) => i > 0 && line.trim() === "---");
+    if (endIndex > 0) {
+      const yamlBlock = lines.slice(1, endIndex).join("\n");
+      try {
+        frontmatter = yaml.load(yamlBlock) as Record<string, any>;
+        
+      } catch (e) {
+        log.error("Failed to parse YAML frontmatter:", e);
+      }
+      contentStart = endIndex + 1;
+    }
+  }
+  
   const headers: Header[] = [];
   const tasks: Task[] = [];
   const tags: Tag[] = [];
@@ -132,8 +154,8 @@ export function extractMetadataFromText(text: string): PageMetadata{
   let codeBlockLanguage: string | null = null;
   let codeBlockContent: string[] = [];
 
-  lines.forEach((line, idx) => {
-    const lineNumber = idx + 1;
+  lines.slice(contentStart).forEach((line, idx) => {
+    const lineNumber = idx + 1 + contentStart;
 
     // ---------- Headers ----------
     const headerMatch = line.match(/^(#{1,6})\s+(.*)/);
@@ -141,10 +163,16 @@ export function extractMetadataFromText(text: string): PageMetadata{
       headers.push({ level: headerMatch[1].length, text: headerMatch[2], line: lineNumber });
     }
 
+    if (frontmatter){
+      if (!("title" in frontmatter)) {
+        const firstH1 = headers.find(h => h.level === 1);
+        if (firstH1) frontmatter.title = firstH1.text;
+      }
+    }
     // ---------- Tasks ----------
     const taskMatch = line.match(/^[-*] \[( |x|X)\] (.+)/);
     if (taskMatch) {
-      tasks.push({ checked: taskMatch[1].toLowerCase() === 'x', text: taskMatch[2], line: lineNumber });
+      tasks.push({ checked: taskMatch[1].toLowerCase() === "x", text: taskMatch[2], line: lineNumber });
     }
 
     // ---------- Tags ----------
@@ -153,7 +181,9 @@ export function extractMetadataFromText(text: string): PageMetadata{
 
     // ---------- Wikilinks ----------
     const wikilinkMatches = [...line.matchAll(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g)];
-    wikilinkMatches.forEach(m => wikilinks.push({ target: m[1], alias: m[2] || undefined, line: lineNumber, context: m[0] }));
+    wikilinkMatches.forEach(m =>
+      wikilinks.push({ target: m[1], alias: m[2] || undefined, line: lineNumber, context: m[0] })
+    );
 
     // ---------- Hyperlinks ----------
     const linkMatches = [...line.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)];
@@ -169,7 +199,7 @@ export function extractMetadataFromText(text: string): PageMetadata{
       if (!inCodeBlock) {
         inCodeBlock = true;
         codeBlockStartLine = lineNumber;
-        codeBlockLanguage = codeBlockStartMatch[1] || 'plain';
+        codeBlockLanguage = codeBlockStartMatch[1] || "plain";
         codeBlockContent = [];
       } else {
         // closing code block
@@ -178,17 +208,33 @@ export function extractMetadataFromText(text: string): PageMetadata{
           language: codeBlockLanguage,
           fromLine: codeBlockStartLine,
           toLine: lineNumber,
-          code: codeBlockContent.join("\n")
+          code: codeBlockContent.join("\n"),
         });
       }
       return; // skip further processing on this line
     }
 
     if (inCodeBlock) codeBlockContent.push(line);
+
+    
+
+    
   });
 
-  return { text: text, lineCount: lines.length, headers, tasks, tags, wikilinks, hyperlinks, codeBlocks, images };
+  return {
+    frontmatter,
+    lineCount: lines.length,
+    headers,
+    tasks,
+    tags,
+    wikilinks,
+    hyperlinks,
+    codeBlocks,
+    images,
+    text,
+  };
 }
+
 
 
 export function getMetadata(text: string) {
