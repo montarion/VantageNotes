@@ -213,6 +213,9 @@
   white-space: normal;  /* allow line wrapping */
 }
 
+.cm-editor .cm-scroller {
+  padding-bottom: 5em; /* adds padding to the bottom, just visually nice */
+}
 
 
 
@@ -234,4 +237,13 @@
 
 .cm-wikilink-broken {
   color: red;
+}
+
+
+.div.cm-html-output-widget {
+  display: block;         
+  margin: 8px 0;         
+  border: 1px solid #ccc; 
+  padding: 8px;
+  background: #f8f8f8;
 }
