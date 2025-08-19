@@ -1,10 +1,11 @@
 import { ViewPlugin } from "npm:@codemirror/view";
 import { Logger } from "../common/logger.ts";
-import { htmlOutputPerBlockPlugin, setHtmlOutput } from "./htmlOutputPlugin.ts";
+import { htmlOutputPerBlockPlugin } from "./htmlOutputPlugin.ts";
 import { CodeBlock } from "../common/metadata.ts";
 import { getActiveTab } from "../common/tabs.ts";
 import { getMetadata } from "../common/metadata.ts";
-import { loadFile } from "../common/navigation.ts";
+import { loadFile, saveFile } from "../common/navigation.ts";
+import { foldLines } from "../common/editor.ts";
 
 const log = new Logger({ namespace: "jsworker", minLevel: "debug" });
 
@@ -75,7 +76,7 @@ export async function runCode(view: any, codeblock: CodeBlock, timeoutMs = 2000)
       switch (data.type) {
         case "render":
           const plugin = view.plugin(htmlOutputPerBlockPlugin);
-          plugin?.setOutput(codeblock.toLine, data.html);
+          plugin?.setOutput(codeblock, data.html);
           break;
     
         case "log":
@@ -98,8 +99,8 @@ export async function runCode(view: any, codeblock: CodeBlock, timeoutMs = 2000)
 
         case "getFile":
           var fileName = data.filename;
-          var fileContent = getMetadata(await loadFile(fileName));
-          runner.worker.postMessage({ callbackId: data.callbackId, value: fileContent });
+          var metadata = getMetadata(await loadFile(fileName));
+          runner.worker.postMessage({ callbackId: data.callbackId, value: metadata });
           break;
 
         case "getText":
@@ -108,7 +109,14 @@ export async function runCode(view: any, codeblock: CodeBlock, timeoutMs = 2000)
           
           runner.worker.postMessage({ callbackId: data.callbackId, value: fileContent.text});
           break;
-        
+        case "setText":
+          var filename = data.filename
+          var res = await saveFile(data.text, filename)
+          runner.worker.postMessage({ callbackId: data.callbackId, value: res});
+        case "foldLines":
+          log.warn("trying to fold lines!")
+          foldLines(data.from, data.to)
+          break;
         default: // really what you'd want is to render everything that's returned at the end..
           runner.worker.postMessage({ callbackId: data.callbackId, value: `Unknown method: ${data.type}`});
       }

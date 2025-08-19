@@ -1,5 +1,7 @@
 // jsRunnerNestedWorker.js
 
+
+
 const callbacks = new Map();
 let nextCallbackId = 0;
 
@@ -79,6 +81,14 @@ self.onmessage = async (e) => {
     async getText(filename) {
       const val = await askMainThread("getText", { filename });
       //console.warn("[Nested][api.getText()] got response:", val);
+      return val;
+    },
+    async setText(filename, text){
+      const val = await askMainThread("setText", {text, filename})
+      return val;
+    },
+    async foldLines(from, to){
+      const val = await askMainThread("foldLines", {from, to})
       return val;
     },
     log: (...args) => {

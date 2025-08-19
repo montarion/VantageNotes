@@ -1,75 +1,67 @@
-//htmlOutputPlugin.ts
 import { ViewPlugin, Decoration, DecorationSet, WidgetType, EditorView, ViewUpdate } from "npm:@codemirror/view";
-import { StateField, StateEffect, RangeSetBuilder } from "npm:@codemirror/state";
-import { Logger } from '../common/logger.ts';
-const log = new Logger({ namespace: 'html', minLevel: 'debug' });
+import { RangeSetBuilder } from "npm:@codemirror/state";
+import { foldEffect } from "npm:@codemirror/fold";
+import { getActiveTab } from "../common/tabs.ts";
+import { CodeBlock } from "../common/metadata.ts";
+import { foldLines } from "../common/editor.ts";
 
-export const setHtmlOutput = StateEffect.define<string>();
-
-export const htmlOutputField = StateField.define<string>({
-  create: () => "",
-  update(value, tr) {
-    for (const e of tr.effects) {
-      if (e.is(setHtmlOutput)) return e.value;
-    }
-    return value;
-  },
-});
-// Effect to trigger refresh
-const refreshEffect = StateEffect.define<void>();
-
+// Widget for HTML output
 class HtmlOutputWidget extends WidgetType {
   html: string;
-  constructor(html: string) { super(); this.html = html; }
+  constructor(html: string) {
+    super();
+    this.html = html;
+  }
+
   toDOM() {
     const div = document.createElement("div");
     div.className = "cm-html-output-widget";
     div.style.border = "1px solid #ccc";
     div.style.padding = "8px";
+    div.style.marginTop = "4px";
+    div.style.whiteSpace = "pre-wrap";
+    div.style.userSelect = "text";
+    div.contentEditable = "false";
     div.innerHTML = this.html;
     return div;
   }
+
+  ignoreEvent() { return false; }
+
+  toText() {
+    const div = document.createElement("div");
+    div.innerHTML = this.html;
+    return div.textContent || "";
+  }
 }
+
+
 
 export const htmlOutputPerBlockPlugin = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
     outputs = new Map<number, string>();
     view: EditorView;
-    interval: number;
 
     constructor(view: EditorView) {
       this.view = view;
       this.decorations = this.build(view);
-
-      
     }
 
     update(update: ViewUpdate) {
-      // Rebuild if document changed, viewport changed, or refreshEffect fired
-      if (
-        update.docChanged ||
-        update.viewportChanged ||
-        update.transactions.some(tr =>
-          tr.effects.some(e => e.is(refreshEffect))
-        )
-      ) {
+      if (update.docChanged || update.viewportChanged) {
         this.decorations = this.build(update.view);
       }
     }
 
-    setOutput(fromLine: number, html: string) {
-      this.outputs.set(fromLine, html);
-      // Decorations will rebuild automatically on next interval
+    setOutput(codeblock: CodeBlock, html: string) {
+      this.outputs.set(codeblock.toLine, html);
+      foldLines(codeblock.fromLine, codeblock.toLine)
     }
 
     build(view: EditorView) {
       const builder = new RangeSetBuilder<Decoration>();
-      const sortedOutputs = Array.from(this.outputs.entries()).sort(
-        ([lineA], [lineB]) => lineA - lineB
-      );
-
-      for (const [fromLine, html] of sortedOutputs) {
+      for (const [fromLine, html] of this.outputs.entries()) {
         const line = view.state.doc.line(fromLine);
         builder.add(
           line.to,
@@ -81,15 +73,8 @@ export const htmlOutputPerBlockPlugin = ViewPlugin.fromClass(
           })
         );
       }
-
       return builder.finish();
     }
-
-    destroy() {
-      clearInterval(this.interval);
-    }
   },
-  {
-    decorations: v => v.decorations
-  }
+  { decorations: v => v.decorations }
 );

@@ -16,7 +16,7 @@ import {
 // Language-related features
 import {
   defaultHighlightStyle, syntaxHighlighting, indentOnInput,
-  bracketMatching
+  bracketMatching, foldEffect, foldCode, foldGutter
 } from "npm:@codemirror/language";
 
 // Editing history and keymaps
@@ -69,7 +69,10 @@ import { getUserID } from '../common/pluginhelpers.ts';
 import { loadFile } from './navigation.ts';
 import { updateBreadcrumb } from './topbar.ts';
 import { registerJsRunner } from '../cm_plugins/jsworker.ts';
-import { htmlOutputField, htmlOutputPerBlockPlugin } from '../cm_plugins/htmlOutputPlugin.ts';
+import { htmlOutputPerBlockPlugin } from '../cm_plugins/htmlOutputPlugin.ts';
+import { autoUnfoldPlugin } from '../cm_plugins/autoUnfoldPlugin.ts';
+import { GetPane, getActivePane } from './pane.ts';
+
 const EDITOR_PANE_ID = "main"; // Your main editor pane id
 
 const log = new Logger({ namespace: 'Editor', minLevel: 'debug' });
@@ -119,8 +122,10 @@ export const baseExtensions = [
   highlightSelectionMatches(),
   lineNumbers(),
   EditorView.lineWrapping,
-  htmlOutputField,
-  htmlOutputPerBlockPlugin
+  //htmlOutputField,
+  htmlOutputPerBlockPlugin,
+  foldGutter(),
+  //autoUnfoldPlugin
   
 ];
 
@@ -189,6 +194,7 @@ export type CMEditor = {
   bindCollaboration: (docId: string, websocketUrl: string) => void;
   getInstance: () => void;
 };
+
 
 export function newEditor(container: HTMLElement): CMEditor {
   log.debug("Creating new editor");
@@ -326,7 +332,28 @@ export function newEditor(container: HTMLElement): CMEditor {
   };
 }
 
-
+/**
+ * Fold an arbitrary line range.
+ * @param view The active EditorView
+ * @param fromLine Zero-based line number (inclusive)
+ * @param toLine Zero-based line number (inclusive)
+ */
+export function foldLines(fromLine: number, toLine: number) {
+  // CodeMirror's `doc.line(n)` is 1-based, so adjust
+  let editor = GetPane(getActivePane()).editorInstance
+  let view = editor?.view
+  const from = view.state.doc.line(fromLine-1).from; // to include the language header
+  const to = view.state.doc.line(toLine-1).to; // to still display the result of render
+  if (from < to && to <= view.state.doc.length) {
+    view.dispatch({
+      effects: foldEffect.of({ from, to })
+    });
+    
+    // Track fold so autoUnfoldPlugin knows about it
+    const plugin = view.plugin(autoUnfoldPlugin);
+    plugin?.addFold(from, to);
+  }
+}
 
 
 /**
