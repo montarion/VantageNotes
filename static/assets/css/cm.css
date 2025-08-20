@@ -247,3 +247,11 @@
   padding: 8px;
   background: #f8f8f8;
 }
+
+.cm-infobar {
+  font-size: 12px;
+  padding: 4px 8px;
+  background: #f5f5f5;
+  border-top: 1px solid #ddd;
+  color: #333;
+}
