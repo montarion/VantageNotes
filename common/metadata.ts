@@ -1,5 +1,6 @@
 // metadata.ts
 
+import { getBacklinks, logBacklinks, registerOutgoingLinks } from './backlinks.ts';
 import { Logger } from './logger.ts';
 import { loadFile } from './navigation.ts';
 import { getActivePane } from './pane.ts';
@@ -35,6 +36,7 @@ export interface PageMetadata {
   images: Imagelink[];
   frontmatter?: Record<string, any>;
   text: string;
+  backlinks?: Wikilink[];
 }
 
 // ---------- Metadata Store ----------
@@ -49,6 +51,7 @@ class MetadataStore {
   private hyperlinks: Hyperlink[] = [];
   private images: Imagelink[] = [];
   private lineCount = 0;
+  private backlinks: Wikilink[] = []
 
   
 
@@ -100,6 +103,14 @@ class MetadataStore {
   }
   updateLineCount(lines: number) { this.lineCount = lines; }
 
+  updateBacklinks(newBacklinks: Wikilink[]) {
+    newBacklinks.forEach(link => {
+      if (!this.backlinks.some(existing => JSON.stringify(existing) === JSON.stringify(link))) {
+        this.backlinks.push(JSON.stringify(link));
+      }
+    });
+  }
+
   getMetadata(): PageMetadata {
 
     return {
@@ -112,7 +123,8 @@ class MetadataStore {
       hyperlinks: this.hyperlinks,
       images: this.images,
       text: this.text,
-      frontmatter: this.frontmatter
+      frontmatter: this.frontmatter,
+      backlinks: this.backlinks,
     };
   }
 }
@@ -238,7 +250,8 @@ export function extractMetadataFromText(text: string): PageMetadata {
 
 
 export function getMetadata(text: string) {
-  return extractMetadataFromText(text);
+  let metadata =  extractMetadataFromText(text);
+  return metadata
   
 }
 
@@ -260,7 +273,10 @@ export async function showMetadataPanel(tabId: string) {
 
   try {
     let tab = getActiveTab()
-    const metadata = tab.metadata;
+    const metadata = tab?.metadata;
+    registerOutgoingLinks(tab?.title, metadata?.wikilinks);
+    logBacklinks();
+    
     
     // save metadata for this tab
     const store = getMetadataStoreForTab(tabId);
@@ -273,6 +289,7 @@ export async function showMetadataPanel(tabId: string) {
     store.updateImages(metadata.images);
     //store.updateLineCount(metadata.lineCount);
 
+    registerOutgoingLinks(tab?.title || "", metadata.wikilinks);
     const content = panel.querySelector(".panel-content")!;
     content.innerHTML = "";
     content.append(renderMetadata(store.getMetadata(), tab?.title));
@@ -366,6 +383,13 @@ function renderMetadata(metadata: PageMetadata, filename: string): HTMLElement {
     i.alt = img.altText || "";
     i.style.maxWidth = "100px";
     return i;
+  })));
+  container.appendChild(createSection("Backlinks", getBacklinks(getActiveTab()?.title).map(page => {
+    const el = document.createElement("a");
+    el.href = "#";
+    el.textContent = page;
+    el.addEventListener("click", e => { e.preventDefault(); openEditorTab(getActiveTab()?.title); });
+    return el;
   })));
 
   return container;
