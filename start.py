@@ -107,25 +107,16 @@ async def notes(filename):
                 data = f.read()
         return data
 
-    #if request.method == "POST":
-    #    today = date.today()
-    #    doc_store.ensure_file_exists(save_path)
-#
-    #    body = await request.get_data()
-    #    with open(save_path, 'w', encoding='utf-8') as f:
-    #        f.write(body.decode("utf-8"))
-#
-    #    try:
-    #        metadata_obj, content = metadata.parse_markdown_file(save_path)
-    #        #db.save_file_metadata(filename, metadata_obj, content, "metadata.db")
-    #        db.save_file(filename, content, metadata_obj)
-    #    except Exception as e:
-    #        log.error(f"Metadata parse/save error: {e}")
-    #        traceback.print_exc()
-    #        return jsonify({'error': f'Failed to parse and save metadata: {str(e)}'}), 500
+    if request.method == "POST":
+        doc_store.ensure_file_exists(save_path)
 
-        return jsonify({'message': f'File {filename} uploaded and indexed successfully.', "metadata": db.get_metadata(filename)}), 201
+        body = await request.get_data()
+        with open(save_path, 'w', encoding='utf-8') as f:
+            f.write(body.decode("utf-8"))
 
+        return jsonify({'message': f'File {filename} uploaded successfully.'}), 201
+
+    return jsonify({'message': f'Something when wrong while saving {filename}.'}), 500
 
 
 async def main():
