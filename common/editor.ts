@@ -65,7 +65,7 @@ import { loadFile } from './navigation.ts';
 import { updateBreadcrumb } from './topbar.ts';
 import { registerJsRunner } from '../cm_plugins/jsworker.ts';
 import { htmlOutputField, htmlOutputPerBlockPlugin, htmlOutputTheme } from '../cm_plugins/htmlOutputPlugin.ts';
-import { GetPane, getActivePane } from './pane.ts';
+import { getPane, getActivePane } from './pane.ts';
 import { infoBarExtension } from '../cm_plugins/infobar.ts';
 
 const EDITOR_PANE_ID = "main"; // Your main editor pane id
@@ -147,33 +147,6 @@ const yCollabField = StateField.define<Extension>({
 });
 
 
-async function getOrCreateYjsDoc(docId: string, initialContent: string) {
-  const websocketUrl = `ws://${location.hostname}:11625/ws`;
-  return await createYjsCollab(docId, getUserID(), websocketUrl, initialContent);
-}
-
-function createYjsCollab(docId: string, userID: string, websocketUrl: string) {
-  return new Promise<{ ydoc: Y.Doc; provider: WebsocketProvider; collabExtension: Extension }>(resolve => {
-    const ydoc = new Y.Doc();
-    const ytext = ydoc.getText(docId);
-
-    const provider = new WebsocketProvider(websocketUrl, docId, ydoc);
-    provider.awareness.setLocalStateField("user", { id: userID, name: userID });
-
-    provider.once("sync", (isSynced: boolean) => {
-      console.log("✅ WebSocket sync complete");
-      resolve({
-        ydoc,
-        provider,
-        collabExtension: yCollab(ytext, provider.awareness),
-      });
-    });
-
-    provider.on("status", (event: { status: string }) => {
-      console.log("WebSocket status:", event.status);
-    });
-  });
-}
 
 
 export type CMEditor = {
@@ -182,8 +155,9 @@ export type CMEditor = {
   setValue: (docId: string, code: string) => void;
   getValue: () => string;
   destroy: () => void;
-  bindCollaboration: (docId: string, websocketUrl: string) => void;
+  bindCollaboration: (docId: string, initialContent: string) => void;
   getInstance: () => void;
+  status: "connecting" | "connected" | "disconnected";
 };
 
 
@@ -320,6 +294,15 @@ export function newEditor(container: HTMLElement): CMEditor {
     },
     bindCollaboration,
     updateFromServer,
+    // 👇 This makes editor.status act like a property
+    get status() {
+      const { provider } = view.state.field(collabStateField);
+      return provider?.wsconnected
+        ? "connected"
+        : provider?.wsconnecting
+          ? "connecting"
+          : "disconnected";
+    },
   };
 }
 
@@ -331,7 +314,7 @@ export function newEditor(container: HTMLElement): CMEditor {
  */
 export function foldLines(fromLine: number, toLine: number) {
   // CodeMirror's `doc.line(n)` is 1-based, so adjust
-  let editor = GetPane(getActivePane()).editorInstance
+  let editor = getPane(getActivePane()).editorInstance
   let view = editor?.view
   const from = view.state.doc.line(fromLine-1).from; // to include the language header
   const to = view.state.doc.line(toLine-1).to; // to still display the result of render
