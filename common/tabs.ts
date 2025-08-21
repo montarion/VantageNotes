@@ -5,7 +5,7 @@ import { updateBreadcrumb, showSaveStatus } from "./topbar.ts";
 import { showMetadataPanel, PageMetadata, getMetadata } from '../common/metadata.ts';
 import { Logger } from "./logger.ts";
 import { shortUUID } from "./pluginhelpers.ts";
-import { GetPane, getActivePane, getPaneContent, handleTabDropToNewPane, removePane, setActivePane } from "./pane.ts";
+import { getPane, getActivePane, getPaneContent, handleTabDropToNewPane, removePane, setActivePane } from "./pane.ts";
 import { CMEditor, newEditor } from "./editor.ts";
 
 const log = new Logger({ namespace: "Tabs", minLevel: "debug" });
@@ -37,7 +37,7 @@ let spinner: HTMLElement | null = null;
 
 export async function initTabs() {
   log.info("Initializing tabs...");
-  GetPane("main")
+  getPane("main")
 
   
 
@@ -54,7 +54,7 @@ export function createTab({
   contentEl,
   isEditor = true,
 }: TabCreation): Tab {
-  const pane = GetPane(paneId);
+  const pane = getPane(paneId);
 
   // Don't recreate if tab already exists
   if (pane.tabs.has(tabId)) {
@@ -126,7 +126,7 @@ export function removeActiveClass(paneId: string){
  * @param {string} tabId - The ID of the tab to switch to.
  */
 export function switchToTab(paneId: string, tabId: string) {
-  const pane = GetPane(paneId);
+  const pane = getPane(paneId);
   const tab = pane.tabs.get(tabId);
   log.debug("switching to tab:", tab.title)
 
@@ -172,7 +172,7 @@ export function switchToTab(paneId: string, tabId: string) {
  */
 function closeTab(paneId: string, tabId: string) {
   log.debug("inside closetab")
-  const pane = GetPane(paneId)
+  const pane = getPane(paneId)
   const tabBar = pane.tabBarEl
   const paneTabs = pane.tabs;
   const contentContainer = pane.contentEl
@@ -207,7 +207,7 @@ function closeTab(paneId: string, tabId: string) {
       switchToTab(paneId, newActiveId)
       
        // Update the UI
-      renderTabsUI(paneId); // would recreate pane through GetPane, so can't be called last
+      renderTabsUI(paneId); // would recreate pane through getPane, so can't be called last
     } else { // pane is now empty
       removePane(paneId) 
     }
@@ -235,7 +235,7 @@ function closeTab(paneId: string, tabId: string) {
  * @param paneId - The ID of the pane to render tabs for.
  */
 export function renderTabsUI(paneId: string) {
-  const pane = GetPane(paneId);
+  const pane = getPane(paneId);
   let tabBar = pane.tabBarEl;
   tabBar.innerHTML = "";
   for (const [tabId, tab] of pane.tabs) {
@@ -393,7 +393,7 @@ function getOrCreatePaneTabs(paneId: string): Map<string, Tab> {
 
 
 function updateTabContentDisplay(paneId: string, tabContent: HTMLElement) {
-  const Pane = GetPane(paneId)
+  const Pane = getPane(paneId)
 
   const activeId = Pane.activeTabId;
   const container = Pane.contentEl; //document.querySelector(`.tab-content[data-pane="${paneId}"]`)
@@ -416,7 +416,7 @@ function updateTabContentDisplay(paneId: string, tabContent: HTMLElement) {
   renderTabsUI(paneId)
 }
 export function setContent(paneId: string, tabId:string){
-  let pane = GetPane(paneId)
+  let pane = getPane(paneId)
   let tab = allTabs.get(tabId)
   if (tab?.isEditor){
     //pane.editorInstance?.setValue(tab.contentEl.textContent || "")
@@ -549,7 +549,7 @@ export async function openEditorTab({paneId, filename}) {
     paneId = getActivePane()
   }
   
-  const pane = GetPane(paneId);
+  const pane = getPane(paneId);
 
   // Load the file's content
   const content = await loadFile(filename);

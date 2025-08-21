@@ -28,7 +28,7 @@ const allDragZones = new Set<HTMLDivElement>();
  * @param {string} [paneId] Optional pane ID. If omitted, a new unique ID is generated.
  * @returns {Pane} The newly created pane object.
  */
-export function GetPane(paneId?: string): Pane {
+export function getPane(paneId?: string): Pane {
     if (!paneId) {
       paneId = `pane_${shortUUID()}`;
     }
@@ -78,7 +78,7 @@ export function GetPane(paneId?: string): Pane {
   
   
 export function getPaneContent(paneId: string): HTMLElement{
-    let pane = GetPane(paneId)
+    let pane = getPane(paneId)
     return pane.contentEl
 }
 
@@ -137,7 +137,7 @@ export function removePane(paneId: string) {
 
   // 🆕 Create new pane if none remain
   if (remainingPaneIds.length === 0) {
-    const newPane = GetPane(); // this creates and registers a fresh one
+    const newPane = getPane(); // this creates and registers a fresh one
     setActivePane(newPane.id);
     log.debug(`All panes removed — created new pane: ${newPane.id}`);
   }
@@ -179,7 +179,7 @@ function setupPaneDragZones(paneEl: HTMLElement, paneId: string) {
   
         const { tabId, fromPane } = JSON.parse(data);
         const side = zone.dataset.side!;
-        const toPane = GetPane().id;
+        const toPane = getPane().id;
   
         handleTabDropToNewPane(fromPane, tabId, toPane);
       });
@@ -192,11 +192,11 @@ function setupPaneDragZones(paneEl: HTMLElement, paneId: string) {
   
   export function handleTabDropToNewPane(fromPaneId: string, tabId: string, toPaneId: string) {
     log.debug("INSIDE HANDLETABDROPTONEWPANE")
-    const fromPane = GetPane(fromPaneId);
+    const fromPane = getPane(fromPaneId);
   
     // Don't do anything if dropping back into same pane
     if (fromPaneId === toPaneId && fromPane.tabs.has(tabId)) return;
-    const toPane = GetPane(toPaneId);
+    const toPane = getPane(toPaneId);
 
     // 1. Create new pane
     const newPane = toPane; 

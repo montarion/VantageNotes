@@ -5,7 +5,7 @@ import {
 import { RangeSetBuilder, StateEffect, StateField } from "npm:@codemirror/state";
 import { PageMetadata } from "../common/metadata.ts";
 import { getActiveTab } from "../common/tabs.ts";
-import { getActivePane, GetPane } from "../common/pane.ts";
+import { getActivePane, getPane } from "../common/pane.ts";
 import { Logger } from '../common/logger.ts';
 const log = new Logger({ namespace: 'HtmlOutputPlugin', minLevel: 'debug' });
 /** One rendered output per fenced block you want to hide/replace */
@@ -133,7 +133,7 @@ export const htmlOutputTheme = EditorView.baseTheme({
 });
 
 export function refreshWidgetsFromMetadata(view: EditorView, meta: PageMetadata) {
-  let pane = GetPane(getActivePane())
+  let pane = getPane(getActivePane())
   let tab = getActiveTab()
   const entries = tab?.metadata.codeBlocks
     .filter(b => (b.language || "").toLowerCase() === "javascript")

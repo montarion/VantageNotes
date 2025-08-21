@@ -10,7 +10,7 @@ import { metadataStore, CodeBlock } from "../common/metadata.ts";
 import { Logger } from '../common/logger.ts';
 const log = new Logger({ namespace: 'Codeblocks', minLevel: 'debug' });
 import { runCode, runnerMap } from "./jsworker.ts";
-import { getActivePane, GetPane } from "../common/pane.ts";
+import { getActivePane, getPane } from "../common/pane.ts";
 import { htmlOutputPerBlockPlugin } from "./htmlOutputPlugin.ts";
 
 

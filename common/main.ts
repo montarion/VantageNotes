@@ -18,7 +18,7 @@ import {
 import { setupSearchHandler } from "./search.ts";
 import { Logger, Logging } from './logger.ts';
 import { shortUUID } from "./pluginhelpers.ts";
-import { GetPane } from "./pane.ts";
+import { getPane } from "./pane.ts";
 
 const log = new Logger({ namespace: 'Main', minLevel: 'debug' });
 
@@ -57,7 +57,7 @@ Logging.enableAll();
   } else if (!hasOpenTabs("main")) {
     // Optionally open a default file or welcome tab
     let newpaneId = "main"
-    GetPane(newpaneId)
+    getPane(newpaneId)
     openEditorTab({paneId:"main", filename:"todo"}); // or create a default home tab if needed
   }
 })();
