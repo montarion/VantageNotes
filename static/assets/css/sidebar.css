@@ -1,15 +1,13 @@
 .sidebar{
   display: block;
   height: calc(100vh - 50px); /* below topbar */
-  /*position: fixed;*/
+  position: fixed;
   top: 50px;
   right: 0;
-  width: 20vw;
-  min-width: 250px;
+  width: 250px;
   background-color: #f4f4f4;
   box-shadow: 2px 0 5px rgba(0,0,0,0.1);
   z-index: 1000;
-  padding: 1rem;
   overflow-y: auto;
 }
 .panel {
