@@ -83,6 +83,7 @@ export async function runCode(view: any, codeblock: CodeBlock, timeoutMs = 2000)
           break;
     
         case "log":
+          log.debug(typeof(data.message))
           console.log("[js log]", data.message);
           break;
     
@@ -94,10 +95,10 @@ export async function runCode(view: any, codeblock: CodeBlock, timeoutMs = 2000)
     
         case "getCurrentFile":
           log.debug("getting current file metadata")
-          var value = getActiveTab()?.metadata;
+          var current = getMetadata(await loadFile(getActiveTab()?.title)); // todo: get text from editor instead of asking the server
           // 🔹 reply back with callbackId + value
-          log.warn(`replying with callback id ${data.callbackId} and value: ${value}`)
-          runner.worker.postMessage({ callbackId: data.callbackId, value });
+          log.warn(`replying with callback id ${data.callbackId} and value: ${JSON.stringify(current)}`)
+          runner.worker.postMessage({ callbackId: data.callbackId, value: current });
           break;
 
         case "getFile":
