@@ -6,7 +6,6 @@ import {
   keymap
 } from "npm:@codemirror/view";
 
-import { runLua } from "../common/lua.ts";
 import { Logger } from '../common/logger.ts';
 
 const log = new Logger({ namespace: 'Slashcommands', minLevel: 'debug' });
@@ -16,13 +15,12 @@ export const SlashCommandPlugin = ViewPlugin.fromClass(class {
   menuDOM: HTMLElement | null = null;
   currentMatch: RegExpMatchArray | null = null;
   slashCommands = [
-    { name: "tag", label: "Insert a tag", insert: "#tag" },
+    { name: "tag", label: "Insert a tag", insert: "#" },
     { name: "todo", label: "Insert a to-do", insert: "- [ ] " },
     { name: "today", label: "Insert today’s date", insert: `[[Dailies/${this.currentDate(new Date())}]]` },
     { name: "time", label: "Insert current time", insert: `${this.currentTime()}` },
     { name: "toggle task", label: "Toggle the current task", run: this.toggleCurrentTask },
-    { name: "warning", label: "Insert warning callout", insert: "> **warning** Warning\n> "},
-    { name: "lua", label: "Run lua code", run: runLua("i = 0")} 
+    { name: "warning", label: "Insert warning callout", insert: "> **warning** \n> "},
   ];
   selectedIndex = 0;
   menuItems: HTMLElement[] = [];
@@ -105,7 +103,7 @@ export const SlashCommandPlugin = ViewPlugin.fromClass(class {
     this.menuItems = Array.from(menu.querySelectorAll(".cm-slash-item"));
     this.updateMenuHighlight();
   }
-
+  
   updateMenuHighlight() {
     this.menuItems.forEach((item, idx) => {
       item.classList.toggle("selected", idx === this.selectedIndex);
@@ -207,7 +205,7 @@ export const slashMenuKeymap = keymap.of([
     }
   },
   {
-    key: "Enter",
+    key: "Tab",
     run: (view) => {
       const plugin = view.plugin(SlashCommandPlugin);
       if (!plugin || !plugin.menuItems.length) return false;
