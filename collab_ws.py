@@ -76,7 +76,7 @@ class SnapshotRoom(YRoom):
             if self._last_save_mtime and abs(mtime - self._last_save_mtime) < 0.01:
                 continue
 
-            log.debug(f"External file change detected for {self.path}: {changes}")
+            #log.debug(f"External file change detected for {self.path}: {changes}")
             asyncio.get_event_loop().create_task(self._merge_file_changes())
 
     async def _merge_file_changes(self):
