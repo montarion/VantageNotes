@@ -7,8 +7,8 @@ import { Logger } from './logger.ts';
 // Core CodeMirror view components
 import {
   keymap, EditorView,
-  highlightActiveLine, rectangularSelection,
-  crosshairCursor, lineNumbers, drawSelection,
+  rectangularSelection,
+  crosshairCursor, drawSelection,
   dropCursor,
   highlightSpecialChars
 } from "npm:@codemirror/view";
@@ -23,11 +23,6 @@ import {
 import {
   defaultKeymap, history, indentWithTab
 } from "npm:@codemirror/commands";
-
-// Search functionality
-import {
-  highlightSelectionMatches
-} from "npm:@codemirror/search";
 
 // Autocomplete and bracket closing
 import {
@@ -70,8 +65,8 @@ import { loadFile } from './navigation.ts';
 import { updateBreadcrumb } from './topbar.ts';
 import { registerJsRunner } from '../cm_plugins/jsworker.ts';
 import { htmlOutputField, htmlOutputPerBlockPlugin, htmlOutputTheme } from '../cm_plugins/htmlOutputPlugin.ts';
-import { autoUnfoldPlugin } from '../cm_plugins/autoUnfoldPlugin.ts';
 import { GetPane, getActivePane } from './pane.ts';
+import { infoBarExtension } from '../cm_plugins/infobar.ts';
 
 const EDITOR_PANE_ID = "main"; // Your main editor pane id
 
@@ -118,16 +113,11 @@ export const baseExtensions = [
   autocompletion(),
   rectangularSelection(),
   crosshairCursor(),
-  //highlightActiveLine(),
-  //highlightSelectionMatches(),
-  //lineNumbers(),
   EditorView.lineWrapping,
-  //htmlOutputField,
   htmlOutputField,
   htmlOutputPerBlockPlugin,
   htmlOutputTheme,
-  //autoUnfoldPlugin
-  
+  infoBarExtension,
 ];
 
 // A StateEffect to reconfigure the Yjs collab binding dynamically
