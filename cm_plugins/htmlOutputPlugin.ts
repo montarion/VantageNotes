@@ -40,10 +40,20 @@ class HtmlOutputWidget extends WidgetType {
     div.className = "cm-html-output-widget";
     div.innerHTML = this.html;
     div.style.border = "1px solid #ccc";
+    div.style.borderRadius = "5px";
     div.style.padding = "8px";
     div.style.margin = "6px 0";
-    div.style.whiteSpace = "normal";
-    div.style.userSelect = "text";
+
+
+    try {
+      // Try to parse JSON
+      log.debug("trying to parse json", this.html)
+      const json = JSON.parse(this.html);
+      div.textContent = JSON.stringify(json, null, 4); // pretty-print
+    } catch{
+      // Fallback: treat as raw HTML
+      div.innerHTML = this.html;
+    }
     return div;
   }
   ignoreEvent() { return false; }
