@@ -103,7 +103,7 @@ export async function runCode(view: any, codeblock: CodeBlock, timeoutMs = 2000)
 
         case "getFile":
           var fileName = data.filename;
-          var metadata = getMetadata(await loadFile(fileName));
+          var metadata = getMetadata(filename, await loadFile(fileName));
           runner.worker.postMessage({ callbackId: data.callbackId, value: metadata });
           break;
 

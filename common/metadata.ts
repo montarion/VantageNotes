@@ -7,6 +7,7 @@ import { getActivePane } from './pane.ts';
 import { getActiveTab, openEditorTab } from './tabs.ts';
 import yaml from 'npm:js-yaml';
 
+
 const log = new Logger({ namespace: 'Metadata', minLevel: 'debug' });
 
 const tabStores = new Map<string, MetadataStore>();
@@ -394,3 +395,4 @@ function renderMetadata(metadata: PageMetadata, filename: string): HTMLElement {
 
   return container;
 }
+
