@@ -25,7 +25,6 @@ function infoBarPanel(view) {
         Line ${line.number}, Col ${cursorPos - line.from + 1} | 
         ${getConnectionStatus()}`
         dom.textContent = infostring
-        log.warn(infostring)
       }
     }
   }
