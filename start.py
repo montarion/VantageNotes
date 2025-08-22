@@ -7,9 +7,7 @@ import asyncio
 from quart import Quart, render_template, request, jsonify, send_from_directory, websocket
 from quart_compress import Compress
 
-import metadata
-import db
-from collab_state import DocumentStore
+
 from logger import Logger
 log = Logger("Main")
 
@@ -17,16 +15,22 @@ from collab_ws import start_yjs_server
 
 NOTES_DIR = 'static/notes'
 
-db.init_db()
-db.load_all_notes(NOTES_DIR, parser=metadata.parse_markdown_file)
-
 app = Quart(__name__)
 Compress(app)
 
 os.chdir("/home/jamiro/code/vantagenotes/")
 
-doc_store = DocumentStore("doc.db")
 
+def ensure_file_exists(self, path: str):
+    # Ensure parent directories exist
+    dir_name = os.path.dirname(path)
+    if dir_name and not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    # Ensure the file exists
+    if not os.path.exists(path):
+        with open(path, 'w') as f:
+            pass  # Create an empty file
 def build_file_tree(path):
     tree = []
     for entry in os.scandir(path):
@@ -74,10 +78,26 @@ async def filelist():
     return jsonify(tree)
 
 
-@app.route('/api/metadata/<path:filename>')
-async def api_get_metadata(filename):
-    md = db.get_metadata(filename)
-    return jsonify(md)
+@app.route('/api/metadata', methods=['POST'])
+async def api_update_metadata(filename):
+    if request.method == "POST":
+        body = await request.get_data()
+        if not body:
+            return jsonify({"error": "No JSON body provided"}), 400
+
+        filename = body.get("filename")
+        metadata = body.get("metadata")
+        user_id = body.get("user_id", "anonymous")  # optional: get from auth/session
+
+        if not filename or not metadata:
+            return jsonify({"error": "Missing 'filename' or 'metadata' in request"}), 400
+
+        # Convert metadata to JSON string
+        metadata_json = json.dumps(metadata)
+
+        return jsonify({'message': f'File {filename} uploaded successfully.'}), 201
+
+    return jsonify({'message': f'Something when wrong while gettting metadata'}), 500
 
 
 @app.route('/api/search')
@@ -102,13 +122,13 @@ async def notes(filename):
             with open(save_path) as f:
                 data = f.read()
         except FileNotFoundError:
-            doc_store.ensure_file_exists(save_path)
+            ensure_file_exists(save_path)
             with open(save_path) as f:
                 data = f.read()
         return data
 
     if request.method == "POST":
-        doc_store.ensure_file_exists(save_path)
+        ensure_file_exists(save_path)
 
         body = await request.get_data()
         with open(save_path, 'w', encoding='utf-8') as f:
