@@ -2,7 +2,7 @@
 
 import { getBacklinks, logBacklinks, registerOutgoingLinks } from './backlinks.ts';
 import { Logger } from './logger.ts';
-import { loadFile } from './navigation.ts';
+import { loadFile, postMetadata } from './navigation.ts';
 import { getActivePane } from './pane.ts';
 import { getActiveTab, openEditorTab } from './tabs.ts';
 import yaml from 'npm:js-yaml';
@@ -42,7 +42,7 @@ export interface PageMetadata {
 
 // ---------- Metadata Store ----------
 class MetadataStore {
-  private text: string;
+  text: string;
   private frontmatter: Record<string, any>;
   private tags: Tag[] = [];
   private headers: Header[] = [];
@@ -250,10 +250,63 @@ export function extractMetadataFromText(text: string): PageMetadata {
 
 
 
-export function getMetadata(text: string) {
-  let metadata =  extractMetadataFromText(text);
-  return metadata
-  
+export async function getMetadata(filename: string, fresh=false): Promise<PageMetadata> {
+  const store = getMetadataStoreForTab(filename);
+  if (!store || fresh) {
+    return await fetchMetadataForFile(filename)
+    //return null; // metadata hasn't been loaded for this file
+  }
+  return store.getMetadata();  // returns PageMetadata
+}
+
+export async function syncMetadataFromServer() {
+  try {
+    const resp = await fetch("/api/metadata");
+    if (!resp.ok) throw new Error("Failed to fetch metadata");
+
+    const metadataMap: Record<string, any> = await resp.json();
+
+    // Save locally (IndexedDB, localStorage, or in-memory store)
+    for (const [filename, meta] of Object.entries(metadataMap)) {
+      const store = getMetadataStoreForTab(filename); // adapt if needed
+      updateStore(store, meta)
+    }
+
+    console.log("Metadata synced from server.");
+  } catch (e) {
+    console.error("Failed to sync metadata:", e);
+  }
+}
+
+function updateStore(filename, metadata): MetadataStore{
+  let store = getMetadataStoreForTab(filename)
+  store.updateHeaders(metadata.headers || []);
+  store.updateTasks(metadata.tasks || []);
+  store.updateTags(metadata.tags || []);
+  store.updateWikilinks(metadata.wikilinks || []);
+  registerOutgoingLinks(filename, metadata.wikilink || []);
+  logBacklinks();
+
+  store.updateHyperlinks(metadata.hyperlinks || []);
+  store.updateImages(metadata.images || []);
+  store.updateLineCount(metadata.lineCount || 0);
+  store.text = metadata.text
+  return store
+}
+async function fetchMetadataForFile(filename: string): Promise<PageMetadata> {
+  try {
+    const resp = await fetch(`/api/metadata/${encodeURIComponent(filename)}`);
+    if (!resp.ok) throw new Error("Failed to fetch metadata");
+    const metadata = await resp.json();
+
+    // Save it in the local store
+    let store = updateStore(filename, metadata)
+    
+    return store.getMetadata();
+  } catch (e) {
+    console.error("Failed to fetch metadata:", e);
+    return null;
+  }
 }
 
 // ---------- Metadata Panel ----------
@@ -275,25 +328,24 @@ export async function showMetadataPanel(tabId: string) {
   try {
     let tab = getActiveTab()
     const metadata = tab?.metadata;
-    registerOutgoingLinks(tab?.title, metadata?.wikilinks);
-    logBacklinks();
+    //registerOutgoingLinks(tab?.title, metadata?.wikilinks);
     
     
     // save metadata for this tab
-    const store = getMetadataStoreForTab(tabId);
-    store.updateTags(metadata.tags);
-    store.updateHeaders(metadata.headers);
-    store.updateTasks(metadata.tasks);
-    store.updateCodeBlocks(metadata.codeBlocks);
-    store.updateWikilinks(metadata.wikilinks);
-    store.updateHyperlinks(metadata.hyperlinks);
-    store.updateImages(metadata.images);
-    //store.updateLineCount(metadata.lineCount);
-
-    registerOutgoingLinks(tab?.title || "", metadata.wikilinks);
+    //const store = getMetadataStoreForTab(tabId);
+    //store.updateTags(metadata.tags);
+    //store.updateHeaders(metadata.headers);
+    //store.updateTasks(metadata.tasks);
+    //store.updateCodeBlocks(metadata.codeBlocks);
+    //store.updateWikilinks(metadata.wikilinks);
+    //store.updateHyperlinks(metadata.hyperlinks);
+    //store.updateImages(metadata.images);
+    ////store.updateLineCount(metadata.lineCount);
+//
+    //registerOutgoingLinks(tab?.title || "", metadata.wikilinks);
     const content = panel.querySelector(".panel-content")!;
     content.innerHTML = "";
-    content.append(renderMetadata(store.getMetadata(), tab?.title));
+    content.append(renderMetadata(metadata, tab?.title));
   } catch (e) {
     log.error("Failed to load metadata:", e);
     panel.querySelector(".panel-content")!.innerHTML = "<p>Error loading metadata</p>";

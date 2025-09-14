@@ -1,9 +1,6 @@
 //pane.ts
 
 import { newEditor } from "./editor.ts";
-import { fetchFileTree, loadFile } from "./navigation.ts";
-import { updateBreadcrumb, showSaveStatus } from "./topbar.ts";
-import { showMetadataPanel } from '../common/metadata.ts';
 import { Logger } from "./logger.ts";
 const log = new Logger({ namespace: "Pane", minLevel: "debug" });
 import { shortUUID } from "./pluginhelpers.ts";

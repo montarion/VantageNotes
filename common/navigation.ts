@@ -3,7 +3,8 @@ import { showSaveStatus } from "./topbar.ts";
 import { Logger } from './logger.ts';
 import { eventBus } from "./events.ts";
 import Fuse from "npm:fuse.js"
-import { PageMetadata } from "./metadata.ts";
+import { CodeBlock, PageMetadata } from "./metadata.ts";
+import { setOutput } from "../cm_plugins/htmlOutputPlugin.ts";
 
 
 const log = new Logger({ namespace: 'Navigation', minLevel: 'debug' });
@@ -124,6 +125,7 @@ export function getInitialFileFromURL(): string | null {
 }
 
 export async function postMetadata(filename: string, metadata: PageMetadata){
+  log.warn("POSTING METADATA")
   const response = await fetch("/api/metadata", {
     method: "POST",
     headers: {
@@ -135,10 +137,13 @@ export async function postMetadata(filename: string, metadata: PageMetadata){
       metadata
     })
   });
-  const tree = await response.json();
-  updateFuseWithFilenames(flattenFilePaths(tree))
-  return tree
+  //const tree = await response.json();
+  //updateFuseWithFilenames(flattenFilePaths(tree))
+  //return tree
 }
+
+
+
 window.addEventListener("popstate", () => {
   const file = getInitialFileFromURL();
   if (file) {

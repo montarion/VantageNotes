@@ -80,7 +80,7 @@ export function createTab({
     paneContentContainer.append(contentEl)
   } else {
     // get metadata
-    metadata = getMetadata(title, contentEl.textContent);
+    metadata = getMetadata(title);
     tabobj["metadata"] = metadata
     //pane.editorInstance?.setValue(contentEl.textContent)
   }
