@@ -9,13 +9,12 @@ from pycrdt.websocket import ASGIServer, WebsocketServer, YRoom
 from pycrdt.store import SQLiteYStore
 from logger import Logger, Logging
 
-Logging.enable_namespace("crdts")
+#Logging.enable_namespace("crdts")
 log = Logger("crdts")
 
 NOTES_DIR = "static/notes/"
-
 class SnapshotRoom(YRoom):
-    def __init__(self, name, ready, store_path="doc_store.sqlite", save_interval=0):
+    def __init__(self, name, ready, store_path="doc_store.sqlite", save_interval=0, store=None):
         # Use persistent store so CRDT update history survives restarts
         super().__init__(
             ystore=SQLiteYStore(path=store_path),
@@ -23,6 +22,7 @@ class SnapshotRoom(YRoom):
         )
 
 
+        self.store = store
         self.name = name
         self.path = os.path.join(NOTES_DIR, name)
         if not self.path.endswith(".md"):
@@ -78,6 +78,7 @@ class SnapshotRoom(YRoom):
 
             #log.debug(f"External file change detected for {self.path}: {changes}")
             asyncio.get_event_loop().create_task(self._merge_file_changes())
+            self.store.scan_file(self.name)
 
     async def _merge_file_changes(self):
         """Read file content and merge into ydoc (external only)."""
@@ -185,11 +186,18 @@ class SnapshotRoom(YRoom):
 
 
 class SnapshotServer(WebsocketServer):
+    def __init__(self, rooms_ready=True, auto_clean_rooms=True, store=None):
+        super().__init__(
+            auto_clean_rooms=auto_clean_rooms,
+            rooms_ready=rooms_ready
+            
+        )
+        self.store = store
     async def get_room(self, name: str) -> SnapshotRoom:
         name = "/".join(name.split("/")[2:])
         if name not in self.rooms.keys():
             log("NEW ROOM")
-            room = SnapshotRoom(name=name, ready=self.rooms_ready)
+            room = SnapshotRoom(name=name, ready=self.rooms_ready, store=self.store)
             log("Starting prep")
             await room.prepare()
             log("Finished prep")
@@ -199,8 +207,8 @@ class SnapshotServer(WebsocketServer):
         return room
 
 
-async def start_yjs_server(host="0.0.0.0", port=11625):
-    websocket_server = SnapshotServer(rooms_ready=True, auto_clean_rooms=True)
+async def start_yjs_server(host="0.0.0.0", port=11625, store=None):
+    websocket_server = SnapshotServer(rooms_ready=True, auto_clean_rooms=True, store=store)
     app = ASGIServer(websocket_server)
     config = uvicorn.Config(app, host=host, port=port)
     server = uvicorn.Server(config)
