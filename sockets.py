@@ -6,7 +6,7 @@ doc_store = DocumentStore("doc.db")
 class WebSocketHandler:
     def __init__(self, ws, clients):
         self.ws = ws
-        self.user_id = None #TODO: get userID from message object
+        self.user_id = None 
         self.joined_docs = set()
         self.doc_versions = {}  # Tracks current version per joined doc
         self.clients = clients  # Global/shared clients dict
