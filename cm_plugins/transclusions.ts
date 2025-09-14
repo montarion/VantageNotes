@@ -8,12 +8,13 @@ import {
   WidgetType,
 } from "npm:@codemirror/view";
 import { RangeSetBuilder, Transaction, EditorState, StateField, StateEffect } from "npm:@codemirror/state";
-import { extensions } from "../common/editor.ts";
+//import { extensions } from "../common/editor.ts";
 import { saveFile, loadFile } from "../common/navigation.ts";
 import { eventBus } from "../common/events.ts";
 import { isRangeSelected } from "../common/pluginhelpers.ts";
 import { Logger } from "../common/logger.ts";
 import { getActiveTab } from "../common/tabs.ts";
+import { baseExtensions } from "../common/editor.ts";
 
 const log = new Logger({ namespace: "Transclusions", minLevel: "debug" });
 
@@ -66,11 +67,11 @@ export function saveTransclusion(
   }
 
   // Debounce save
-  const timer = window.setTimeout(() => {
-    logger.debug(`💾 Saving transclusion to: ${target}`);
-    saveFile(content, target);
-    saveTimers.delete(target);
-  }, delay);
+  //const timer = window.setTimeout(() => {
+  //  logger.debug(`💾 Saving transclusion to: ${target}`);
+  //  saveFile(content, target);
+  //  saveTimers.delete(target);
+  //}, delay);
 
   saveTimers.set(target, timer);
 }
@@ -179,37 +180,7 @@ export class TransclusionWidget extends WidgetType {
         new EditorView({
           doc: displayContent,
           extensions: [
-            EditorView.editable.of(true),
-            ...extensions,
-            EditorState.transactionFilter.of((tr) => {
-              // Tag inner view edits as "input.transclusion"
-              if (tr.docChanged && !tr.annotation(Transaction.userEvent)) {
-                return tr.update({
-                  annotations: tr.annotations.concat(Transaction.userEvent.of("input.transclusion")),
-                });
-              }
-              return tr;
-            }),
-            EditorView.updateListener.of(update => {
-              if (update.docChanged) {
-                const updatedContent = update.state.doc.toString();
-                log.debug("found it")
-                let filename = getActiveTab().title
-                saveTransclusion(updatedContent, this.target, filename, log);
-            
-                // Signal active editing
-                this.setActiveTransclusion(true);
-            
-                if (this.clearTimeoutId !== null) {
-                  clearTimeout(this.clearTimeoutId);
-                }
-            
-                this.clearTimeoutId = window.setTimeout(() => {
-                  this.setActiveTransclusion(false);
-                  this.clearTimeoutId = null;
-                }, 100);
-              }
-            }),
+            baseExtensions
           ],
           parent: tempDiv,
         });

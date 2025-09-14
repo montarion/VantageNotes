@@ -12,8 +12,11 @@ const log = new Logger({ namespace: 'Codeblocks', minLevel: 'debug' });
 import { runCode, runnerMap } from "./jsworker.ts";
 import { getActivePane, getPane } from "../common/pane.ts";
 import { htmlOutputPerBlockPlugin } from "./htmlOutputPlugin.ts";
+import { query, setupQueryPolling } from "../cm_plugins/query.ts";
 
+type PollerMap = Map<string, () => void>; // key = block id, value = stop function
 
+const activeQueryPollers: PollerMap = new Map();
 // A widget to show the codeblock label (e.g. "css", "javascript")
 class CodeblockLabelWidget extends WidgetType {
   constructor(readonly language: string | null) {
@@ -100,9 +103,12 @@ export const decorateCodeblockLinesPlugin = ViewPlugin.fromClass(class {
   }
 
   build(view) {
-    const builder = new RangeSetBuilder();
+    const builder = new RangeSetBuilder<Decoration>();
     const codeBlockRanges = getCodeBlockRanges(view.state.doc);
     const foundCodeBlocks: CodeBlock[] = [];
+  
+    // Stop pollers that might no longer exist
+    const stillActiveKeys = new Set<string>();
   
     for (const { from, to } of view.visibleRanges) {
       let pos = from;
@@ -136,25 +142,49 @@ export const decorateCodeblockLinesPlugin = ViewPlugin.fromClass(class {
             foundCodeBlocks.push(codeBlock);
   
             if (language === "javascript") {
-              runCode(view, codeBlock); 
+              runCode(view, codeBlock);
+            }
+  
+            if (language === "query") {
+              const blockId = `${lineNumber}-${toLineNumber}`;
+              stillActiveKeys.add(blockId);
+  
+              // Stop old poller if exists
+              if (activeQueryPollers.has(blockId)) {
+                activeQueryPollers.get(blockId)!();
+              }
+  
+              // Start new poller for this block
+              const stopPolling = setupQueryPolling(view, codeBlock, 5000);
+              activeQueryPollers.set(blockId, stopPolling);
             }
   
             builder.add(line.from, line.from, Decoration.line({ class: "cm-codeblock-label" }));
-            builder.add(line.from, line.to, Decoration.replace({ widget: new CodeblockLabelWidget(language), block: false })
+            builder.add(
+              line.from,
+              line.to,
+              Decoration.replace({ widget: new CodeblockLabelWidget(language), block: false })
             );
           } else if (line.from === fenceRange.to - line.length) {
             // Closing fence line
             builder.add(line.from, line.to, Decoration.replace({ widget: new ZeroWidthWidget() }));
           } else {
-            // Actual code lines inside the block
+            // Code lines inside the block
             builder.add(line.from, line.from, Decoration.line({ class: "cm-codeblock" }));
           }
         } else if (isInCodeBlock(line.from, line.to, codeBlockRanges)) {
-          // Lines inside a block but not fence lines
           builder.add(line.from, line.from, Decoration.line({ class: "cm-codeblock" }));
         }
   
         pos = line.to + 1;
+      }
+    }
+  
+    // Cleanup old pollers that are no longer visible
+    for (const key of activeQueryPollers.keys()) {
+      if (!stillActiveKeys.has(key)) {
+        activeQueryPollers.get(key)!();
+        activeQueryPollers.delete(key);
       }
     }
   

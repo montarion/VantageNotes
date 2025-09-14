@@ -2,11 +2,13 @@
 import {
   ViewPlugin, Decoration, DecorationSet, WidgetType, EditorView, ViewUpdate
 } from "npm:@codemirror/view";
-import { RangeSetBuilder, StateEffect, StateField } from "npm:@codemirror/state";
+
+import { EditorState, RangeSetBuilder, StateEffect, StateField } from "npm:@codemirror/state";
 import { PageMetadata } from "../common/metadata.ts";
 import { getActiveTab } from "../common/tabs.ts";
 import { getActivePane, getPane } from "../common/pane.ts";
 import { Logger } from '../common/logger.ts';
+import { baseExtensions } from "../common/editor.ts";
 const log = new Logger({ namespace: 'HtmlOutputPlugin', minLevel: 'debug' });
 /** One rendered output per fenced block you want to hide/replace */
 export type HtmlOutputEntry = {
@@ -32,37 +34,43 @@ export function applyHtmlOutputs(view: EditorView, entries: HtmlOutputEntry[]) {
   view.dispatch({ effects: setHtmlOutputs.of(entries) });
 }
 
-/** Block widget that shows the rendered HTML; copy/paste yields plain text */
+
+/** Block widget that shows rendered Markdown in a nested editor */
 class HtmlOutputWidget extends WidgetType {
-  constructor(private html: string) { super(); }
+  constructor(private markdown: string) { super(); }
+
   toDOM() {
-    const div = document.createElement("div");
-    div.className = "cm-html-output-widget";
-    div.innerHTML = this.html;
-    div.style.border = "1px solid #ccc";
-    div.style.borderRadius = "5px";
-    div.style.padding = "8px";
-    div.style.margin = "6px 0";
+    const wrapper = document.createElement("div");
+    wrapper.className = "cm-html-output-widget";
 
+    const nestedDiv = document.createElement("div");
+    nestedDiv.className = "cm-html-output-editor";
+    wrapper.appendChild(nestedDiv);
 
-    try {
-      // Try to parse JSON
-      log.debug("trying to parse json", this.html)
-      const json = JSON.parse(this.html);
-      div.textContent = JSON.stringify(json, null, 4); // pretty-print
-    } catch{
-      // Fallback: treat as raw HTML
-      div.innerHTML = this.html;
-    }
-    return div;
+    // Create a nested CodeMirror view with the markdown content
+    new EditorView({
+      state: EditorState.create({
+        doc: this.markdown,
+        extensions: [
+          baseExtensions,
+          EditorView.editable.of(false), // make read-only
+          EditorState.readOnly.of(true)  // enforce read-only
+        ]
+      }),
+      parent: nestedDiv
+    });
+
+    return wrapper;
   }
+
   ignoreEvent() { return false; }
+
   toText() {
-    const div = document.createElement("div");
-    div.innerHTML = this.html;
-    return div.textContent || "";
+    return this.markdown;
   }
 }
+
+
 
 /** The plugin: hides code lines + inserts widgets when cursor not inside */
 export const htmlOutputPerBlockPlugin = ViewPlugin.fromClass(
@@ -101,7 +109,7 @@ export const htmlOutputPerBlockPlugin = ViewPlugin.fromClass(
         const toPos = endLine.to;
         const cursorInside = sel.from <= toPos && sel.to >= fromPos;
         
-        if (!cursorInside) {
+        if (true){//(!cursorInside) {
           // Then hide lines (line decorations) **after** the widget
           for (let ln = fromLine; ln < toLine; ln++) {
             const l = view.state.doc.line(ln);
@@ -149,13 +157,30 @@ export function refreshWidgetsFromMetadata(view: EditorView, meta: PageMetadata)
 export function setOutput(view: EditorView, entry: HtmlOutputEntry) {
   const current = view.state.field(htmlOutputField, false) || [];
 
+  // Normalize: if `html` is object/array, stringify it
+  let normalizedHtml: string;
+  if (typeof entry.html === "string") {
+    normalizedHtml = entry.html;
+  } else {
+    try {
+      normalizedHtml = JSON.stringify(entry.html, null, 2);
+    } catch {
+      normalizedHtml = String(entry.html);
+    }
+  }
+
+  const normalizedEntry: HtmlOutputEntry = {
+    ...entry,
+    html: normalizedHtml
+  };
+
   // Remove any previous entry that overlaps exactly the same lines
   const filtered = current.filter(
     e => e.fromLine !== entry.fromLine || e.toLine !== entry.toLine
   );
 
   // Merge the new entry
-  const merged = [...filtered, entry];
+  const merged = [...filtered, normalizedEntry];
 
   // Sort by fromLine so decorations apply in document order
   merged.sort((a, b) => a.fromLine - b.fromLine);
