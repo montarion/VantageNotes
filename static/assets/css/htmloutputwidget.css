@@ -1,0 +1,8 @@
+.cm-html-output-widget {
+    display: block;         
+    margin: 8px 0;         
+    border: 1px solid #ccc; 
+    padding: 8px;
+    border-radius: 5px;
+    background: #f8f8f8;
+  }
