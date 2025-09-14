@@ -95,7 +95,8 @@ export async function runCode(view: any, codeblock: CodeBlock, timeoutMs = 2000)
     
         case "getCurrentFile":
           log.debug("getting current file metadata")
-          var current = getMetadata(await loadFile(getActiveTab()?.title)); // todo: get text from editor instead of asking the server
+          var title = getActiveTab()?.title
+          var current = await getMetadata(title, true);
           // 🔹 reply back with callbackId + value
           log.warn(`replying with callback id ${data.callbackId} and value: ${JSON.stringify(current)}`)
           runner.worker.postMessage({ callbackId: data.callbackId, value: current });
@@ -103,13 +104,13 @@ export async function runCode(view: any, codeblock: CodeBlock, timeoutMs = 2000)
 
         case "getFile":
           var fileName = data.filename;
-          var metadata = getMetadata(filename, await loadFile(fileName));
+          var metadata = await getMetadata(filename, true);
           runner.worker.postMessage({ callbackId: data.callbackId, value: metadata });
           break;
 
         case "getText":
           var fileName = data.filename;
-          var fileContent = getMetadata(await loadFile(fileName));
+          var fileContent = await getMetadata(filename, true);
           
           runner.worker.postMessage({ callbackId: data.callbackId, value: fileContent.text});
           break;
@@ -131,6 +132,7 @@ export async function runCode(view: any, codeblock: CodeBlock, timeoutMs = 2000)
     runner.worker.addEventListener("message", onMessage);
 
     // send code + runId so the worker can tag messages
-    runner.worker.postMessage({ code: codeblock.code, runId, timeoutMs});
+    let code = codeblock.code
+    runner.worker.postMessage({ code: code, runId, timeoutMs});
   });
 }
