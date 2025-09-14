@@ -6,50 +6,63 @@ import { metadataStore, Task } from "../common/metadata.ts";
 import { Logger } from '../common/logger.ts';
 const log = new Logger({ namespace: 'Checklists', minLevel: 'debug' });
 // Regex to match checklist items with optional indent, checkbox, and task text
-const checklistRegex = /^(\s*)[-*] \[([ xX])\] (.*)$/;
+const checklistRegex = /^(\s*)[-*] \[([ xX])\]\s*(?:\[\[([^\]#]+?)(?:#L(\d+))?\]\])?\s*(.*)$/;
+
 
 class CheckboxWidget extends WidgetType {
   checked: boolean;
   onToggle: () => void;
   indent: string;
   view: EditorView;
+  filename?: string;
+  lineNumber?: number;
 
   constructor(
     checked: boolean,
     onToggle: () => void,
     indent: string,
-    view: EditorView
+    view: EditorView,
+    filename?: string,
+    lineNumber?: number
   ) {
     super();
     this.checked = checked;
     this.onToggle = onToggle;
     this.indent = indent;
     this.view = view;
+    this.filename = filename;
+    this.lineNumber = lineNumber;
   }
 
   toDOM() {
     const label = document.createElement("label");
-  label.style.display = "inline-block";
-  label.style.cursor = "pointer";
-  label.style.userSelect = "auto";
-  label.style.padding = "3px"; // 🔸 Make clickable area larger
+    label.style.display = "inline-block";
+    label.style.cursor = "pointer";
+    label.style.userSelect = "auto";
+    label.style.padding = "3px";
     label.style.margin = "-2px";
-  const box = document.createElement("input");
-  box.type = "checkbox";
-  box.checked = this.checked;
-  box.style.marginLeft = this.indent.length + "ch";
-  box.style.pointerEvents = "auto"; // Just in case
 
-  box.onmousedown = (e) => {
-    e.preventDefault(); // Avoid CodeMirror stealing focus
-    this.onToggle();
-  };
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = this.checked;
+    box.style.marginLeft = this.indent.length + "ch";
+    box.style.pointerEvents = "auto";
 
-  label.appendChild(box);
-  return label;
+    box.onmousedown = (e) => {
+      e.preventDefault();
+      this.onToggle();
+    };
+
+    label.appendChild(box);
+
+    // Optional tooltip for external tasks
+    if (this.filename) {
+      label.title = `${this.filename}${this.lineNumber ? `#L${this.lineNumber}` : ""}`;
+    }
+
+    return label;
   }
 
-  // Capture events before editor swallows them
   override eventHandlers() {
     return {
       mousedown: (event) => {
@@ -70,6 +83,30 @@ class CheckboxWidget extends WidgetType {
 }
 
 
+function parseTask(line: string) {
+  const match = checklistRegex.exec(line);
+  if (!match) return null;
+
+  const [, indent, boxState, filename, lineNumber, taskText] = match;
+  const checked = boxState.toLowerCase() === "x";
+  if (filename) {
+    // This is a reference to another file
+    return {
+      type: "external",
+      filename,
+      lineNumber: lineNumber ? parseInt(lineNumber, 10) : null,
+      checked,
+      text: taskText.trim(),
+    };
+  } else {
+    // Local task in the current file
+    return {
+      type: "local",
+      checked,
+      text: taskText.trim(),
+    };
+  }
+}
 
 export const checklistPlugin = ViewPlugin.fromClass(
   class {
@@ -105,7 +142,6 @@ export const checklistPlugin = ViewPlugin.fromClass(
 
               // Determine if checkbox is checked by testing for '[x]' pattern
               const checked = /\[[xX]\]/.test(lineText);
-
               // Emit an event for listeners with the checkbox's line number and state
               eventBus.emit("checkboxToggled", {
                 lineNumber: line.number,
@@ -121,69 +157,66 @@ export const checklistPlugin = ViewPlugin.fromClass(
     buildDecorations(view: EditorView): DecorationSet {
       const builder = new RangeSetBuilder<Decoration>();
       const foundTasks: Task[] = [];
-
-      // Iterate over all visible ranges (viewport) in the editor for efficiency
+    
       for (const { from, to } of view.visibleRanges) {
         let pos = from;
-
+    
         while (pos <= to) {
           const line = view.state.doc.lineAt(pos);
-
-          // Match checklist regex for lines like "- [ ] task text"
-          const match = checklistRegex.exec(line.text);
-
-          if (match) {
-            const [_, indent, boxState] = match;       // Capture indent and checkbox state
-            const checked = boxState.toLowerCase() === "x"; // Checkbox is checked if 'x'
-            const checkboxStart = line.from + indent.length + 2; // Position of '[' char
-            const taskText = line.text.substr(6);      // Task text always starts at char 6
-
-            // Define toggle function to update the checkbox in the document
+          const task = parseTask(line.text);
+    
+          if (task) {
+            const indent = line.text.match(/^\s*/)?.[0] ?? "";
+            const checkboxStart = line.from + indent.length + 2;
+    
             const onToggle = () => {
-              const newChar = checked ? " " : "x";     // Toggle character inside brackets
-              log.debug("UPDATING TOGGLE");
-              // Dispatch a transaction to replace the checkbox state in the doc
-              view.dispatch({
-                changes: {
-                  from: checkboxStart + 1,  // Position inside the brackets (the ' ' or 'x')
-                  to: checkboxStart + 2,
-                  insert: newChar
-                }
-              });
+              if (task.type === "external") {
+                log.debug(`filename: ${task.filename} - line: ${task.lineNumber} - newstate: ${!task.checked}`)
+                eventBus.emit("toggleCheckboxInFile", {
+                  filename: task.filename,
+                  lineNumber: task.lineNumber ?? line.number,
+                  newState: !task.checked,
+                });
+              } else {
+                const newChar = task.checked ? " " : "x";
+                view.dispatch({
+                  changes: {
+                    from: checkboxStart + 1,
+                    to: checkboxStart + 2,
+                    insert: newChar,
+                  },
+                });
+              }
             };
-            //if (!isRangeSelected(view, checkboxStart - 2, checkboxStart + 3)){
-
-              // Add the checkbox widget decoration at the checkbox position
-              builder.add(
-                checkboxStart - 2, // Go back to the "-" so you replace the entirety of "- [ ]"
-                checkboxStart + 3, // The length of "[ ]" or "[x]"
-                Decoration.widget({
-                  widget: new CheckboxWidget(checked, onToggle, indent, view),
-                  side: 0,
-                })
-              );
-
-            //}
-            // Replace the original "[ ]" or "[x]" text with a zero-width widget to hide it
-            //builder.add(
-            //  checkboxStart,
-            //  checkboxStart + 3,
-            //  Decoration.replace({ widget: new ZeroWidthWidget() })
-            //);
-
-            // Collect task metadata for external use (e.g., UI, syncing)
-            foundTasks.push({ text: taskText, line: line.number, checked });
+    
+            // Insert the checkbox widget
+            builder.add(
+              checkboxStart - 2,
+              checkboxStart + 3,
+              Decoration.widget({
+                widget: new CheckboxWidget(
+                  task.checked,
+                  onToggle,
+                  indent,
+                  view
+                ),
+                side: 0,
+              })
+            );
+    
+            // Track task metadata
+            foundTasks.push({
+              text: task.text,
+              line: line.number,
+              checked: task.checked,
+            });
           }
-
-          // Move to next line after current one
+    
           pos = line.to + 1;
         }
       }
-
-      // Update the metadata store with the latest tasks found in the viewport
+    
       metadataStore.updateTasks(foundTasks);
-
-      // Return all decorations as a DecorationSet to be applied by CodeMirror
       return builder.finish();
     }
   },
