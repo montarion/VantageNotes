@@ -75,6 +75,7 @@ const log = new Logger({ namespace: 'Editor', minLevel: 'debug' });
 // Extensions that are injected dynamically or from outside
 export const outsideExtensions = [
   transclusionActiveField,
+  infoBarExtension,
 ];
 // Main set of editor extensions, plugins and UI features (non-collab)
 export const baseExtensions = [
@@ -117,7 +118,7 @@ export const baseExtensions = [
   htmlOutputField,
   htmlOutputPerBlockPlugin,
   htmlOutputTheme,
-  infoBarExtension,
+  
 ];
 
 // A StateEffect to reconfigure the Yjs collab binding dynamically
