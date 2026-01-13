@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VantageNotes</title>
+
+    <!-- Scripts and Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cm.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tabs.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/topbar.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navigation.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/transclusions.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pane.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/htmloutputwidget.css') }}" />
+
+
+  </head>
+
+  <body>
+    
+    <!-- Topbar -->
+    <div class="topbar">
+      <button id="navigationToggle">Toggle Navigation</button>
+      <input id="search-input" type="text" placeholder="Search..." />
+      <button id="sidebarToggle">Toggle Sidebar</button>
+      <button id="exportpdf">Export PDF</button>
+
+    </div>
+    
+
+    <!-- Layout Grid -->
+    <main>
+        <nav class="navigation"></nav>
+        <div class="app">
+          <div class="tabs"></div>
+          <div id="editor-container"></div>
+        </div>
+
+          <!-- Example panes; you can add/remove any panes dynamically 
+          <div class="container" data-pane="pane1">
+            <div class="tab-bar" data-pane="pane1"></div>
+            <div class="tab-content" data-pane="pane1"></div>
+          </div>
+          -->
+
+      
+        <div id="sidebar" class="sidebar">
+          <div class="box red"></div>
+        </div>
+    </main>
+    
+
+    <!-- Lua & JS -->
+    <script type="module" src="{{ url_for('static', filename='dist/main.js') }}"></script>
+    
+    <div id="spinner" style="display:none;">Loading...</div>
+  </body>
+</html>

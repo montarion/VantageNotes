@@ -1,0 +1,268 @@
+// editor.ts
+// CodeMirror 6 editor setup with Yjs-based collaboration integration.
+
+// Logging utility
+import { Logger } from './logger.ts';
+
+// Core CodeMirror view components
+import {
+  keymap, EditorView,
+  rectangularSelection,
+  crosshairCursor, drawSelection,
+  dropCursor,
+  highlightSpecialChars,
+  lineNumbers,
+  gutter
+} from "npm:@codemirror/view";
+
+// Language-related features
+import {
+  defaultHighlightStyle, syntaxHighlighting, indentOnInput,
+  bracketMatching, syntaxTree
+} from "npm:@codemirror/language";
+
+
+// Editing history and keymaps
+import {
+  defaultKeymap, history, indentWithTab
+} from "npm:@codemirror/commands";
+
+import { EditorSelection } from "npm:@codemirror/state";
+
+// Autocomplete and bracket closing
+import {
+  autocompletion, closeBrackets
+} from "npm:@codemirror/autocomplete";
+
+import { EditorState, StateEffect, Extension, StateField } from "npm:@codemirror/state";
+
+
+
+// Language setup
+import { markdown } from "npm:@codemirror/lang-markdown";
+import { languages } from "npm:@codemirror/language-data";
+
+// Yjs and Yjs-Codemirror integration
+import * as Y from 'npm:yjs';
+import { yCollab } from 'npm:y-codemirror.next';
+import { WebsocketProvider } from 'npm:y-websocket';
+import { tagHighlighter } from '../cm/tagHighlighter.ts';
+import { linkHighlighter } from '../cm/linkHighlighter.ts';
+import { wikilinkBracketsToggle } from '../cm/brackethider.ts';
+
+const EDITOR_PANE_ID = "main"; // Your main editor pane id
+
+const log = new Logger({ namespace: 'Editor', minLevel: 'debug' });
+
+
+// Extensions that are injected dynamically or from outside
+export const outsideExtensions = [
+
+];
+// Main set of editor extensions, plugins and UI features (non-collab)
+export const baseExtensions = [
+  markdown({ 
+    codeLanguages: languages,
+  }),
+  autocompletion({ override: [], activateOnTyping: true }),
+  EditorView.theme({
+    "&": { height: "100%" }
+  }),
+  keymap.of([
+    indentWithTab,
+    ...defaultKeymap,
+  ]),
+  highlightSpecialChars(),
+  history(),
+  drawSelection(),
+  dropCursor(),
+  EditorState.allowMultipleSelections.of(true),
+  indentOnInput(),
+  syntaxHighlighting(defaultHighlightStyle),
+  bracketMatching(),
+  closeBrackets(),
+  rectangularSelection(),
+  crosshairCursor(),
+  EditorView.lineWrapping,
+
+  tagHighlighter(),
+  linkHighlighter(),
+  wikilinkBracketsToggle(),
+
+];
+
+// A StateEffect to reconfigure the Yjs collab binding dynamically
+const setYCollabEffect = StateEffect.define<Extension>();
+const collabDynamicExtension = EditorState.transactionExtender.of(tr => {
+  for (let e of tr.effects) {
+    if (e.is(setYCollabEffect)) {
+      return { effects: StateEffect.appendConfig.of([e.value]) };
+    }
+  }
+  return null;
+});
+
+export type CMEditor = {
+    /** The actual CodeMirror view instance */
+    view: EditorView;
+  
+    /** Whether Yjs collaboration is active */
+    collab_enabled: boolean;
+  
+    /** Replace the document content (works in local or collaborative mode) */
+    setValue: (docId: string, code: string) => void;
+  
+    /** Get the current document content as a string */
+    getValue: () => string;
+  
+    /** Reset the editor completely with new text (clears history, resets cursor) */
+    resetEditor: (newText: string) => void;
+  
+    /** Clean up editor and any Yjs bindings */
+    destroy: () => void;
+  
+    /** Bind a Yjs collaborative session to this editor */
+    bindCollaboration: (docId: string, initialContent?: string) => void;
+  
+    /** Current connection status for collaboration */
+    status: "connecting" | "connected" | "disconnected";
+  };
+  
+
+export function newEditor(container: HTMLElement): CMEditor {
+    log.debug("Creating new editor");
+  
+    const setCollabBinding = StateEffect.define<{ ydoc: Y.Doc | null; provider: WebsocketProvider | null }>();
+  
+    const collabStateField = StateField.define<{ ydoc: Y.Doc | null; provider: WebsocketProvider | null }>({
+      create() { return { ydoc: null, provider: null }; },
+      update(value, tr) {
+        for (let ef of tr.effects) {
+          if (ef.is(setCollabBinding)) return ef.value;
+        }
+        return value;
+      }
+    });
+  
+    const state = EditorState.create({
+      doc: `testing #tags in cm6 [[plans]]`,
+      extensions: [
+        ...baseExtensions,
+        ...outsideExtensions,
+        collabStateField
+      ]
+    });
+  
+    const view = new EditorView({ state, parent: container });
+    window.mainEditorView = view;
+  
+    async function bindCollaboration(docId: string, initialContent = "") {
+      log.debug(`Binding collaboration for docId=${docId}`);
+      const old = view.state.field(collabStateField, false);
+  
+      if (old?.provider) {
+        old.provider.awareness.setLocalState(null);
+        old.provider.destroy();
+      }
+      if (old?.ydoc) old.ydoc.destroy();
+  
+      const ydoc = new Y.Doc();
+      const websocketUrl = `ws://${location.hostname}:11625/ws`;
+      const provider = new WebsocketProvider(websocketUrl, docId, ydoc);
+  
+      provider.awareness.setLocalStateField("user", { id: "1", name: "!" });
+      provider.on("status", e => log.debug(`[WS ${docId}] status: ${e.status}`));
+  
+      await new Promise<void>(resolve => provider.once("sync", () => resolve()));
+  
+      const ytext = ydoc.getText(docId);
+      if (ytext.length === 0 && initialContent) ytext.insert(0, initialContent);
+  
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: ytext.toString() }
+      });
+  
+      view.dispatch({ effects: setCollabBinding.of({ ydoc, provider }) });
+    }
+  
+    // -----------------------------
+    // Reset document content
+    // -----------------------------
+    function setValue(docId: string, docText: string) {
+      const { ydoc } = view.state.field(collabStateField);
+  
+      if (!ydoc) {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: docText },
+          scrollIntoView: true
+        });
+        return;
+      }
+  
+      const ytext = ydoc.getText(docId);
+      ydoc.transact(() => {
+        ytext.delete(0, ytext.length);
+        ytext.insert(0, docText);
+      });
+    }
+  
+    // -----------------------------
+    // Reset editor completely
+    // -----------------------------
+    function resetEditor(newText: string) {
+      // Clear history and replace doc
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: newText },
+        selection: { anchor: 0 },
+        userEvent: "input"
+      });
+  
+      // Reset undo/redo history
+      view.dispatch({
+        effects: StateEffect.reconfigure.of([
+          ...baseExtensions,
+          ...outsideExtensions,
+          collabStateField
+        ])
+      });
+    }
+  
+    return {
+      view,
+      collab_enabled: Boolean(view.state.field(collabStateField).ydoc),
+      setValue,
+      getValue: () => view.state.doc.toString(),
+      resetEditor,
+      destroy: () => {
+        const { ydoc, provider } = view.state.field(collabStateField);
+        if (provider) {
+          provider.awareness.setLocalState(null);
+          provider.destroy();
+        }
+        if (ydoc) ydoc.destroy();
+        view.destroy();
+      },
+      bindCollaboration,
+      get status() {
+        const { provider } = view.state.field(collabStateField);
+        return provider?.wsconnected
+          ? "connected"
+          : provider?.wsconnecting
+            ? "connecting"
+            : "disconnected";
+      }
+    };
+  }
+  
+
+function clampSelection(sel: EditorSelection, maxPos: number): EditorSelection {
+return EditorSelection.create(
+    sel.ranges.map(r =>
+    EditorSelection.range(
+        Math.min(r.anchor, maxPos),
+        Math.min(r.head, maxPos)
+    )
+    ),
+    sel.mainIndex
+);
+}

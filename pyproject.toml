@@ -1,0 +1,15 @@
+[project]
+name = "vantagenotes"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fuzzywuzzy>=0.18.0",
+    "pycrdt>=0.12.44",
+    "pycrdt-websocket>=0.16.0",
+    "quart>=0.20.0",
+    "quart-compress>=0.2.1",
+    "uvicorn>=0.40.0",
+    "watchfiles>=1.1.1",
+]

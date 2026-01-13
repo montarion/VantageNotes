@@ -1,0 +1,146 @@
+:root{
+  --cm-link-color: #c678dd;
+  --cm-text-color: white
+}
+.cm-editor{
+    width: 80ch;
+    border-left: 1px dashed rgba(80, 80, 80, 0.25);
+    border-right: 1px dashed rgba(80, 80, 80, 0.25);
+}
+
+.cm-tag.cm-link {
+  border: 1px solid var(--cm-link-color);
+  border-radius: 6px;
+  background-color: var(--cm-link-color);
+  font-weight: 600;
+  color: var(--cm-text-color);
+  padding:2px;
+  }
+
+
+
+.cm-wikilink {
+    color:green;
+    font-weight: 600;
+}
+
+.cm-hidden-bracket {
+    transition: opacity 0.15s;
+    color: inherit;
+  }
+
+  .cm-heading-1 { font-weight: bold; font-size: 1.5em; }
+  .cm-heading-2 { font-weight: bold; font-size: 1.3em; }
+  .cm-heading-3 { font-weight: bold; font-size: 1.1em; }
+  .cm-heading-4 { font-weight: bold; font-size: 1em; }
+
+
+  .cm-list-item {
+    padding-left: 1em;
+    border-left: 2px solid #ccc;
+  }
+  
+  .cm-checklist-checked {
+    padding-left: 1em;
+    border-left: 2px solid green;
+    color: gray;
+    text-decoration: line-through;
+  }
+  
+  .cm-checklist-unchecked {
+    padding-left: 1em;
+    border-left: 2px solid red;
+  }
+  
+  .cm-checklist-widget {
+    display: inline-flex;
+    align-items: center;
+    padding: 0px;
+    cursor: pointer;
+    pointer-events: auto;
+    user-select: none;
+  }
+  
+  .cm-checklist-widget input {
+    pointer-events: none;
+  }
+
+  
+  .cm-list-widget {
+    display: inline-block;
+    width: 0.25em;
+    height: 0.25em;
+    border-radius: 50%;
+    background: #666;
+    margin-right: 0.5em;
+    vertical-align: middle;
+  }
+
+
+  .cm-transclusion {
+    
+    border: 1px solid grey;
+    border-radius: 6px;
+    opacity: 0.9;
+    display: flex;
+    flex-direction: column;
+    justify-items: center;
+    justify-content: center;
+    justify-self: center;
+    align-content: center;
+  }
+  
+  .cm-transclusion-header {
+    font-size: 0.85em;
+    opacity: 0.8;
+    cursor: pointer;
+  }
+  
+  .cm-transclusion-header.is-folded::before {
+    content: "▸ ";
+  }
+  
+  .cm-transclusion-body {
+    margin-top: 0.25em;
+  }
+
+  .cm-header-hash{
+    opacity: 0;
+    pointer-events: none;
+    display: none;
+  }
+  .cm-header-syntax {
+    opacity: 0;
+    pointer-events: none;
+    display: none;
+  }
+
+  .cm-header-syntax.cm-visible {
+    opacity: 0.4;
+    display: inline-block;
+  }
+  .cm-tag-hash,
+.cm-wikilink-bracket,
+.cm-transclusion-syntax,
+.cm-link-syntax {
+  opacity: 0;
+  display: none;
+}
+
+.cm-hidden {
+  opacity: 0;
+  display: none;
+}
+.cm-visible {
+  opacity: 1;
+  display: inline-block;
+}
+
+.cm-link {
+  border: 0px solid var(--cm-link-color);
+  border-radius: 6px;
+  color: var(--cm-link-color);
+  font-weight: 600;
+  padding:2px;
+}
+

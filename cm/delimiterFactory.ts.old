@@ -1,0 +1,155 @@
+import {
+    ViewPlugin,
+    Decoration,
+    DecorationSet,
+    EditorView,
+  } from "npm:@codemirror/view";
+  import { Extension, RangeSetBuilder } from "npm:@codemirror/state";
+  
+
+type DelimitedSpec = {
+    regexp: RegExp;
+  
+    prefix?: (match: RegExpExecArray) => [number, number][];
+    content: (match: RegExpExecArray) => [number, number];
+    suffix?: (match: RegExpExecArray) => [number, number][];
+  
+    prefixClass?: string;
+    contentClass: string;
+    suffixClass?: string;
+    hidden?: (match: RegExpExecArray) => [number, number][];
+    hiddenClass?: string;
+    type?: string;
+    getTarget?: (match: RegExpExecArray) => string;
+    invalidateOnSelection?: boolean;
+  };
+
+  export function createDelimitedHighlighter(
+    spec: DelimitedSpec
+  ): Extension {
+    return ViewPlugin.fromClass(
+      class {
+        decorations: DecorationSet;
+        view: EditorView;
+
+        constructor(view: EditorView) {
+            this.view = view;
+            this.decorations = this.build(view);
+    
+            // Attach click handler
+            this.handler = (e: MouseEvent) => {
+              let el = e.target as HTMLElement;
+              // Bubble up to find parent with data-target
+                while (el && !el.dataset.target) el = el.parentElement;
+                if (!el) return;
+              const target = el.dataset.target;
+              const type = el.dataset.link;
+              if (target && type) {
+                e.preventDefault();       // ✅ stop default
+                e.stopPropagation(); 
+                console.debug(`Clicked ${type}:`, target);
+                // Here you can call your navigation logic
+                if (type == "wikilink"){
+                    window.nav.switchTab(target)
+                }
+                if (type == "markdownlink"){
+                    window.open(target)
+                }
+              }
+            };
+            view.dom.addEventListener("click", this.handler);
+          }
+
+        handler: (e: MouseEvent) => void;
+
+        destroy() {
+            this.view.dom.removeEventListener("click", this.handler);
+          }
+        update(update) {
+          if (
+            update.docChanged ||
+            update.viewportChanged ||
+            (spec.invalidateOnSelection && update.selectionSet)
+          ) {
+            this.decorations = this.build(update.view);
+          }
+        }
+  
+        build(view: EditorView): DecorationSet {
+          const builder = new RangeSetBuilder<Decoration>();
+          const text = view.state.doc.toString();
+          const cursors = view.state.selection.ranges.map(r => r.head);
+            
+          spec.regexp.lastIndex = 0;
+          let m;
+          //console.debug(`looking for link: ${spec.type} with target ${spec.getTarget(spec.regexp.exec(text))}`)
+          while ((m = spec.regexp.exec(text))) {
+            const from = m.index;
+            const to = from + m[0].length;
+  
+            const active = cursors.some(pos => pos > from && pos < to);
+            
+            const add = (ranges, cls) => {
+              if (!ranges || !cls) return;
+              for (const [a, b] of ranges) {
+                builder.add(
+                  a,
+                  b,
+                  Decoration.mark({
+                    class: active ? `${cls} cm-visible` : cls,
+                    attributes: {
+                        "data-link": spec.type ?? "unknown",       // type of element
+                        "data-target": spec.getTarget ? spec.getTarget(m) : m[1] || m[0],
+                      }
+                  })
+                );
+              }
+            };
+  
+            add(spec.prefix?.(m), spec.prefixClass);
+            add(spec.hidden?.(m), spec.hiddenClass);
+            add([spec.content(m)], spec.contentClass);
+            add(spec.suffix?.(m), spec.suffixClass);
+          }
+  
+          return builder.finish();
+        }
+      },
+      { decorations: v => v.decorations }
+    );
+  }
+
+
+  export const linkClickHandler = ViewPlugin.fromClass(
+    class {
+      constructor(view: EditorView) {
+        this.view = view;
+        this.handler = (e: MouseEvent) => {
+          let el = e.target as HTMLElement;
+  
+          // find nearest element with data-target
+          while (el && !el.dataset.target) el = el.parentElement;
+          if (!el || el.dataset.handled) return;
+  
+          el.dataset.handled = "1"; // prevent double firing
+          e.preventDefault();
+          e.stopPropagation();
+  
+          const target = el.dataset.target;
+          const type = el.dataset.link;
+          if (target && type) {
+            if (type === "wikilink") window.nav.switchTab(target);
+            if (type === "markdownlink") window.open(target, "_blank");
+            if (type === "transclusion") window.nav.showTransclusion(target);
+            if (type === "tag") window.nav.showTag(target);
+          }
+        };
+  
+        view.dom.addEventListener("click", this.handler);
+      }
+  
+      destroy() {
+        this.view.dom.removeEventListener("click", this.handler);
+      }
+    }
+  );

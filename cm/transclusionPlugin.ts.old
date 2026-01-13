@@ -1,0 +1,183 @@
+import {
+    Decoration,
+    DecorationSet,
+    EditorView,
+    ViewPlugin,
+    ViewUpdate,
+    WidgetType,
+  } from "npm:@codemirror/view";
+  import { StateField, RangeSetBuilder } from "npm:@codemirror/state";
+  import { Navigation } from "../common/navigation.ts";
+  import { Logger } from "../common/logger.ts";
+
+  import { CMEditor, createEditorView } from "../common/editor.ts";
+  const log = new Logger({namespace: 'TransclusionPlugin'})
+
+  const TRANSCLUSION_REGEX = /!\[\[([^\]|#]+)(?:#([^\]|]+))?(?:\|([^\]]+))?\]\]/g;
+  const nav = new Navigation
+  /* ───────────────────────────────────────────── */
+  /* Widget                                        */
+  /* ───────────────────────────────────────────── */
+  type TransclusionSpec = {
+    filename: string;
+    header: string | null;
+    alias: string | null;
+  };
+
+  export class TransclusionWidget extends WidgetType {
+    filename: string;
+    header: string | null;
+    alias: string | null;
+    folded: boolean;
+    editor?: EditorView;
+  
+    constructor(spec: TransclusionSpec) {
+      super();
+      this.filename = spec.filename;
+      this.header = spec.header;
+      this.alias = spec.alias;
+      this.folded = !!spec.alias; // 👈 key rule
+    }
+  
+    eq(other: TransclusionWidget) {
+      return (
+        this.filename === other.filename &&
+        this.header === other.header &&
+        this.alias === other.alias &&
+        this.folded === other.folded
+      );
+    }
+  
+    toDOM() {
+      const wrapper = document.createElement("div");
+      wrapper.className = "cm-transclusion";
+    
+      const header = document.createElement("div");
+      header.className = "cm-transclusion-header";
+      header.textContent =
+        this.alias ??
+        this.filename + (this.header ? ` › ${this.header}` : "");
+      header.onclick = () => {
+        this.folded = !this.folded;
+        wrapper.replaceWith(this.toDOM());
+      };
+      wrapper.appendChild(header);
+    
+      if (this.folded) {
+        header.classList.add("is-folded");
+        return wrapper;
+      }
+      
+      const body = document.createElement("div");
+      body.className = "cm-transclusion-body";
+      wrapper.appendChild(body);
+    
+      (async () => {
+        try {
+          const content = await nav.getFile(this.filename);
+          const shown = this.header
+            ? extractHeaderSection(content, this.header)
+            : content;
+    
+          this.editor = createEditorView({
+            parent: body,
+            doc: shown,
+            editable: false,
+            extensions: [
+              EditorView.theme({
+                ".cm-gutters": { display: "none" },
+                "&": { backgroundColor: "transparent" },
+              }),
+            ],
+          });
+        } catch {
+          body.textContent = "⚠️ Failed to load";
+        }
+      })();
+    
+      return wrapper;
+    }
+  
+    ignoreEvent() {
+      return false;
+    }
+  }
+  
+  function extractHeaderSection(
+    doc: string,
+    header: string
+  ): string {
+    const lines = doc.split("\n");
+  
+    const headerRegex = new RegExp(
+      `^(#{1,6})\\s+${header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`
+    );
+  
+    let start = -1;
+    let level = 0;
+  
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(headerRegex);
+      if (m) {
+        start = i;
+        level = m[1].length;
+        break;
+      }
+    }
+  
+    if (start === -1) return "";
+  
+    const result = [lines[start]];
+  
+    for (let i = start + 1; i < lines.length; i++) {
+      const m = lines[i].match(/^(#{1,6})\s+/);
+      if (m && m[1].length <= level) break;
+      result.push(lines[i]);
+    }
+  
+    return result.join("\n");
+  }
+  function buildTransclusions(state): DecorationSet {
+    const builder = new RangeSetBuilder<Decoration>();
+    const text = state.doc.toString();
+  
+    TRANSCLUSION_REGEX.lastIndex = 0;
+    let match;
+  
+    while ((match = TRANSCLUSION_REGEX.exec(text)) !== null) {
+      log.debug(match)
+      const fname:string = match[1]
+      const to = match.index + match[0].length;
+  
+      builder.add(
+        to,
+        to,
+        Decoration.widget({
+          block: true, // ✅ now legal
+          widget: new TransclusionWidget({
+            filename:match[1],
+            header: match[2],
+            alias: match[3],
+          }),
+        })
+      );
+    }
+  
+    return builder.finish();
+  }
+  export const transclusionField = StateField.define<DecorationSet>({
+    create(state) {
+      return buildTransclusions(state);
+    },
+  
+    update(deco, tr) {
+      if (tr.docChanged) {
+        return buildTransclusions(tr.state);
+      }
+      return deco.map(tr.changes);
+    },
+  
+    provide: f =>
+      EditorView.decorations.from(f),
+  });
+  
