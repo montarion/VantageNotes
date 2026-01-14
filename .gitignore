@@ -11,7 +11,7 @@ wheels/
 deno.lock
 .venv
 package.json
-package_lock.json
+package-lock.json
 
 # node
 node_modules/
