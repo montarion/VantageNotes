@@ -9,10 +9,9 @@ import { getLS, setLS } from "./helpers.ts";
 
 import { createDocumentManager } from "./documentManager.ts";
 import { YjsEditor } from "./editor.ts";
-
+import { toast } from "./toast.ts";
 window.toast = toast
 
-toast.notify("Hi There!")
 const nav = new Navigation();
 window.nav = nav
 
