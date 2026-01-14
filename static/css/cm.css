@@ -144,3 +144,8 @@
   padding:2px;
 }
 
+.cm-hr{
+  border-bottom: "1px solid #475569";
+  margin: "0.75em 0";
+  width: "100%";
+}

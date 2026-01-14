@@ -7,19 +7,30 @@ import { matches } from "./dslEvaluator.ts";
 import { sampleNotes } from "./lua/queryEngine.ts";
 import { getLS, setLS } from "./helpers.ts";
 
-
+import { createDocumentManager } from "./documentManager.ts";
 import { YjsEditor } from "./editor.ts";
 
-const container = document.getElementById("editor-container");
-if (!container) throw new Error("No editor container found");
+window.toast = toast
 
-const editor = new YjsEditor(container);
+toast.notify("Hi There!")
+const nav = new Navigation();
+window.nav = nav
 
-// Fetch initial content from server
-await editor.loadFromServer();
+await nav.updateFileList()
+window.documentManager = createDocumentManager();
+// Create a single editor container
+const container = document.getElementById("editor-container")!;
 
-// Example: set/get value
-console.log("Current content:", editor.getValue());
+// Open initial document (homepage)
+const homepageDoc = await window.documentManager.open("homepage", { online: true });
+const editor = new YjsEditor(container, homepageDoc);
+
+// Wire Navigation to the editor
+nav.setEditor(editor);
+
+// Load last tab or default
+await nav.loadLastTab();
+
 
 
 

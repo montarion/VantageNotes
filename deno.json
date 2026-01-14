@@ -8,9 +8,5 @@
     "lib": ["dom", "esnext"],
     "noImplicitAny": true,
     "strictNullChecks": true
-  },
-  "imports": {
-    "@codemirror/state": "npm:@codemirror/state@^6.5.2",
-    "@codemirror/view": "npm:@codemirror/view@^6.38.0"
   }
 }

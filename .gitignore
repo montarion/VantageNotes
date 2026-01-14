@@ -6,5 +6,16 @@ dist/
 wheels/
 *.egg-info
 
-# Virtual environments
+
+# Deno/Virtual environments
+deno.lock
 .venv
+package.json
+package_lock.json
+
+# node
+node_modules/
+
+# notes
+*.db
+static/notes/*

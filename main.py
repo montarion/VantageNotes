@@ -139,17 +139,17 @@ async def api_query():
 @app.route("/notes/<path:filename>", methods=['GET', 'POST'])
 async def notes(filename):
     file_path = (NOTES_ROOT / filename).with_suffix(".md").resolve(strict=False)
-
     if not file_path.resolve().is_relative_to(NOTES_ROOT):
         return "Forbidden", 403
     save_path = f"static/notes/{filename}.md"
+    log.debug(f"file_path is: {save_path}")
 
     if request.method == "GET":
         try:
             with open(save_path) as f:
                 data = f.read()
         except FileNotFoundError:
-            data = ""
+            return ""
         return data, 200, {"Content-Type": "text/markdown; charset=utf-8"}
 
     if request.method == "POST":
