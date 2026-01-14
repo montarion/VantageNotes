@@ -15,13 +15,24 @@ import {
     getQueryState
 } from "./lua/queryEngine.ts";
 import { runDSLQuery } from "./lua/dslExecutor.ts";
+import { toast } from "./toast.ts";
 
 export async function runLuaScript(luaCode: string) {
     const factory = new LuaFactory();
     const lua = await factory.createEngine();
   
     lua.global.set("print", console.log);
-  
+
+    // Wrap toast API for Lua
+    const luaToast = {
+      notify: (msg: string) => toast.notify(msg),
+      info: (msg: string) => toast.notify(msg),
+      debug: (msg: string) => toast.debug(msg),
+      warn: (msg: string) => toast.warn(msg),
+      error: (msg: string) => toast.error(msg),
+      success: (msg: string) => toast.success(msg),
+    };
+    lua.global.set("toast", luaToast);
     lua.global.set("PKM", {
       query() {
         const id = createQuery();

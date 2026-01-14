@@ -29,3 +29,38 @@ export type Note = {
     dirty: boolean;           // unsaved changes
     lastLoadedAt?: number;
   };
+
+
+  export function debounce<F extends (...args: any[]) => void>(
+    fn: F,
+    wait: number
+  ) {
+    let timeout: number | undefined;
+  
+    return (...args: Parameters<F>) => {
+      if (timeout !== undefined) clearTimeout(timeout);
+      timeout = setTimeout(() => fn(...args), wait);
+    };
+  }
+
+  export function debounceAsync<F extends (...args: any[]) => Promise<any>>(
+    fn: F,
+    wait: number
+  ) {
+    let timeout: number | undefined;
+    let resolveList: ((value: Awaited<ReturnType<F>>) => void)[] = [];
+  
+    return (...args: Parameters<F>): Promise<Awaited<ReturnType<F>>> => {
+      if (timeout !== undefined) clearTimeout(timeout);
+  
+      return new Promise((resolve) => {
+        resolveList.push(resolve);
+  
+        timeout = setTimeout(async () => {
+          const result = await fn(...args);
+          resolveList.forEach((r) => r(result));
+          resolveList = [];
+        }, wait);
+      });
+    };
+  }
