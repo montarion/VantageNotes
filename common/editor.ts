@@ -28,9 +28,6 @@ const log = new Logger({ namespace: "Editor" });
 
 export const baseExtensions = [
   markdown({
-    base: markdownLanguage.configure({
-      extensions: [Table],
-    }),
     codeLanguages: languages,
    }),
   autocompletion({ override: ["homepage"], activateOnTyping: true }),
