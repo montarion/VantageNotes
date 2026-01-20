@@ -15,7 +15,7 @@ import {
 import { ManagedDocument } from "./documentManager.ts";
 import { Logger } from "./logger.ts";
 import { linkClickHandler } from "../cm/delimiterFactory.ts";
-import { headerHighlighter, tagHighlighter, wikilinkHighlighter, transclusionHighlighter, markdownLinkHighlighter } from "../cm/delimiters.ts";
+import { headerHighlighter, tagHighlighter, wikilinkHighlighter, transclusionHighlighter, markdownLinkHighlighter, blockquoteHighlighter, hrHighlighter, codeFenceHighlighter, admonitionHighlighter } from "../cm/delimiters.ts";
 import { runLuaScript } from "./luaVM.ts";
 import { frontmatterField } from "../cm/frontmatterPlugin.ts";
 import { markdownListDecorator } from "../cm/markdownListDecorator.ts";
@@ -49,13 +49,19 @@ export const baseExtensions = [
   wikilinkHighlighter,
   transclusionHighlighter,
   markdownLinkHighlighter,
+  blockquoteHighlighter,
+  hrHighlighter,
+  codeFenceHighlighter,
+  admonitionHighlighter,
   luaExecutionPlugin(runLuaScript),
   markdownHeadingDecorator,
   markdownListDecorator,
   frontmatterField,
   createTransclusionField(),
   linkClickHandler,
-  markdownHrDecorator,
+  //markdownHrDecorator,
+  
+  
   //clickableLinks,
 ];
 export class YjsEditor {

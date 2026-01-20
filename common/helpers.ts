@@ -64,3 +64,41 @@ export type Note = {
       });
     };
   }
+
+  export function previousLineIsQuote(m: RegExpExecArray): boolean {
+    const text = m.input;
+    const matchStart = m.index;
+  
+    // At start of document → first quote line
+    if (matchStart === 0) return false;
+  
+    // Find start of previous line
+    const prevLineEnd = matchStart - 1; // char before \n
+    const prevLineStart =
+      text.lastIndexOf("\n", prevLineEnd - 1) + 1;
+  
+    const prevLine = text.slice(prevLineStart, prevLineEnd);
+  
+    return /^\s*>/.test(prevLine);
+  }
+
+  export function findIndentedBlock(
+    text: string,
+    start: number
+  ): { from: number; to: number } {
+    let pos = start;
+    let end = start;
+  
+    while (pos < text.length) {
+      const lineEnd = text.indexOf("\n", pos);
+      const nextLineEnd = lineEnd === -1 ? text.length : lineEnd + 1;
+      const line = text.slice(pos, nextLineEnd);
+  
+      if (!/^ {4}/.test(line)) break;
+  
+      end = nextLineEnd;
+      pos = nextLineEnd;
+    }
+  
+    return { from: start, to: end };
+  }
