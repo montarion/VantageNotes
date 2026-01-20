@@ -1,5 +1,9 @@
-import { createDelimitedHighlighter } from "./delimiterFactory.ts";
+//delimiters.ts
 
+import { findIndentedBlock, previousLineIsQuote } from "../common/helpers.ts";
+import { Logger } from "../common/logger.ts";
+import { createDelimitedHighlighter } from "./delimiterFactory.ts";
+const log = new Logger({ namespace: "Delimiter" });
 
 /* ────────────────────────────── */
 /* Tags (#tag)           */
@@ -171,3 +175,226 @@ export const wikilinkHighlighter = createDelimitedHighlighter({
   
     invalidateOnSelection: true,
   });
+
+
+  /* ────────────────────────────── */
+/* Blockquotes (> quote)          */
+/* ────────────────────────────── */
+export const blockquoteHighlighter = createDelimitedHighlighter({
+  regexp: /(^|\n)(>+)\s*([^\n]*)/g,
+
+  line: m => m.index + m[1].length,
+
+  prefix: m => {
+    const start = m.index + m[1].length;
+    return [[start, start + m[2].length + 1]];
+  },
+
+  content: m => {
+    const start = m.index + m[1].length + m[2].length + 1;
+    return [start, start + m[3].length];
+  },
+
+  prefixClass: "cm-quote-marker",
+  contentClass: "cm-quote",
+  lineClass: "cm-quote-line",
+
+  /** 🔥 NEW */
+  lineClassWhen: m =>
+    previousLineIsQuote(m) ? null : "cm-quote-start",
+
+
+  type: "blockquote",
+  invalidateOnSelection: true,
+});
+
+/* ────────────────────────────── */
+/* Horizontal rule (---)           */
+/* ────────────────────────────── */
+export const hrHighlighter = createDelimitedHighlighter({
+  regexp: /(^|\n)(-{3,}|\*{3,}|_{3,})(?=\n|$)/g,
+
+  line: m => m.index + m[1].length,
+  lineClass: "cm-hr",
+  // hide the actual --- text
+  hidden: m => {
+    const start = m.index + m[1].length;
+    return [[start, start + m[2].length + 1]];
+  },
+
+  hiddenClass: "cm-hidden",
+  type: "thematic-break",
+  invalidateOnSelection: true,
+});
+
+/* ────────────────────────────── */
+/* Code fences (```lang)           */
+/* ────────────────────────────── */
+export const codeFenceHighlighter = createDelimitedHighlighter({
+  regexp: /(^|\n)(```+)([^\n]*)/g,
+
+  prefix: m => {
+    const start = m.index + m[1].length;
+    return [[start, start + m[2].length]];
+  },
+
+  content: m => {
+    if (!m[3]) return undefined as any;
+    const start = m.index + m[1].length + m[2].length;
+    return [start, start + m[3].length];
+  },
+
+  prefixClass: "cm-code-fence",
+  contentClass: "cm-code-lang",
+
+  type: "code-fence",
+});
+
+
+// admonitions
+export const admonitionHighlighter = createDelimitedHighlighter({
+  regexp: /(^|\n)!!!\s+([a-zA-Z0-9_-]+)(?:\s+(.*))?/g,
+
+  // header line decoration
+  line: m => m.index + m[1].length,
+  lineClass: "cm-admonition-header",
+
+  // hide !!!
+  hidden: m => {
+    const start = m.index + m[1].length;
+    return [[start, start + 3]];
+  },
+  hiddenClass: "cm-hidden",
+
+  // decorate the TYPE
+  prefix: m => {
+    const start = m.index + m[1].length + 4; // !!!␠
+    return [[start, start + m[2].length]];
+  },
+
+  // decorate the TITLE (if any)
+  content: m => {
+    if (!m[3]) return undefined as any;
+    const start =
+      m.index + m[1].length + 4 + m[2].length + 1;
+    return [start, start + m[3].length];
+  },
+
+  prefixClass: "cm-admonition-type",
+  contentClass: "cm-admonition-title",
+
+  // body block (unchanged)
+  block: m => {
+    const text = m.input;
+    const headerEnd =
+      text.indexOf("\n", m.index) + 1;
+
+    return findIndentedBlock(text, headerEnd);
+  },
+  blockClass: "cm-admonition-body",
+
+  type: "admonition",
+  getTarget: m => m[2], // still the type
+  invalidateOnSelection: true,
+});
+
+/* ────────────────────────────── */
+/* Entity references (@thing|alias) */
+/* ────────────────────────────── */
+export const atReferenceHighlighter = createDelimitedHighlighter({
+  regexp: /(?<!\S)@([^|\s]+)(?:\|([^\s]+))?/g,
+
+  // @
+  prefix: m => [[m.index, m.index + 1]],
+
+  // visible content
+  content: m => {
+    if (m[2]) {
+      // alias
+      const aliasStart =
+        m.index + 1 + m[1].length + 1; // @name|
+      return [aliasStart, aliasStart + m[2].length];
+    }
+
+    // no alias → show name
+    return [m.index + 1, m.index + 1 + m[1].length];
+  },
+
+  // hide canonical name when alias exists
+  hidden: m =>
+    m[2]
+      ? [[
+          m.index + 1,
+          m.index + 1 + m[1].length + 1, // name|
+        ]]
+      : undefined,
+
+  prefixClass: "cm-entity-at",
+  contentClass: "cm-entity cm-link",
+  hiddenClass: "cm-hidden",
+
+  type: "entity",
+  getTarget: m => m[1], // canonical id
+
+  invalidateOnSelection: true,
+});
+
+
+/* ────────────────────────────── */
+/* Semantics (::a::b/c|alias)     */
+/* ────────────────────────────── */
+export const semanticHighlighter = createDelimitedHighlighter({
+  regexp: /(?<!\S)::([^|\s]+(?:::[^|\s]+)*)(?:\|([^\s]+))?/g,
+
+  // ::
+  prefix: m => [[m.index, m.index + 2]],
+
+  content: m => {
+    if (m[2]) {
+      // alias exists
+      const aliasStart =
+        m.index + 2 + m[1].length + 1; // ::path|
+      return [aliasStart, aliasStart + m[2].length];
+    }
+
+    // no alias → show last segment only
+    const parts = m[1].split("::");
+    const last = parts[parts.length - 1];
+    const offset = m[1].length - last.length;
+
+    return [
+      m.index + 2 + offset,
+      m.index + 2 + m[1].length,
+    ];
+  },
+
+  // hide everything except alias or last segment
+  hidden: m => {
+    if (m[2]) {
+      return [[
+        m.index + 2,
+        m.index + 2 + m[1].length + 1, // path|
+      ]];
+    }
+
+    const parts = m[1].split("::");
+    if (parts.length <= 1) return undefined;
+
+    const hideLen =
+      m[1].length - parts[parts.length - 1].length;
+
+    return [[
+      m.index + 2,
+      m.index + 2 + hideLen,
+    ]];
+  },
+
+  prefixClass: "cm-semantic-colon",
+  contentClass: "cm-semantic",
+  hiddenClass: "cm-hidden",
+
+  type: "semantic",
+  getTarget: m => m[1], // full semantic path
+
+  invalidateOnSelection: true,
+});

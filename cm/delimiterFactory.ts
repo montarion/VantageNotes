@@ -5,19 +5,30 @@ import {
     EditorView,
   } from "npm:@codemirror/view";
   import { Extension, RangeSetBuilder } from "npm:@codemirror/state";
-  
+import { Logger } from "../common/logger.ts";
+  const log = new Logger({ namespace: "DelimiterFactory" });
   type DelimitedSpec = {
     regexp: RegExp;
   
     prefix?: (match: RegExpExecArray) => [number, number][];
-    content: (match: RegExpExecArray) => [number, number];
+    content?: (match: RegExpExecArray) => [number, number];
     suffix?: (match: RegExpExecArray) => [number, number][];
   
-    prefixClass?: string;
-    contentClass: string;
-    suffixClass?: string;
     hidden?: (match: RegExpExecArray) => [number, number][];
+  
+    /** NEW */
+    line?: (match: RegExpExecArray) => number; // line start position
+    lineClassWhen?: (match: RegExpExecArray) => string | null;
+    prefixClass?: string;
+    contentClass?: string;
+    suffixClass?: string;
     hiddenClass?: string;
+    lineClass?: string; // NEW
+  
+
+    /* Block-level decoration */
+    block?: (match: RegExpExecArray) => { from: number; to: number };
+    blockClass?: string;
     type?: string;
     getTarget?: (match: RegExpExecArray) => string;
     invalidateOnSelection?: boolean;
@@ -52,15 +63,16 @@ import {
           const builder = new RangeSetBuilder<Decoration>();
           const text = view.state.doc.toString();
           const cursors = view.state.selection.ranges.map((r) => r.head);
-  
+        
           spec.regexp.lastIndex = 0;
           let m;
+        
           while ((m = spec.regexp.exec(text))) {
             const from = m.index;
             const to = from + m[0].length;
-  
+        
             const active = cursors.some((pos) => pos > from && pos < to);
-  
+        
             const add = (ranges: [number, number][] | undefined, cls?: string) => {
               if (!ranges || !cls) return;
               for (const [a, b] of ranges) {
@@ -77,15 +89,65 @@ import {
                 );
               }
             };
-  
+            
+            /* ───────────────────────── line decoration ───────────────────────── */
+        
+            if (spec.line && (spec.lineClass || spec.lineClassWhen)) {
+              log.debug("doing lines")
+              const linePos = spec.line(m);
+              const extra = spec.lineClassWhen?.(m);
+        
+              const cls = [spec.lineClass, extra].filter(Boolean).join(" ");
+        
+              if (cls) {
+                builder.add(
+                  linePos,
+                  linePos,
+                  Decoration.line({
+                    class: active ? `${cls} cm-visible` : cls,
+                    attributes: {
+                      "data-link": spec.type ?? "unknown",
+                      "data-target": spec.getTarget ? spec.getTarget(m) : m[0],
+                    },
+                  })
+                );
+              }
+            }
+        
+            /* ───────────────────────── block decoration ───────────────────────── */
+        
+            if (spec.block && spec.blockClass) {
+              log.debug("doing blocks")
+              const { from: bFrom, to: bTo } = spec.block(m);
+              builder.add(
+                bFrom,
+                bTo,
+                Decoration.mark({
+                  class: spec.blockClass,
+                  attributes: {
+                    "data-link": spec.type ?? "unknown",
+                    "data-target": spec.getTarget ? spec.getTarget(m) : m[0],
+                  },
+                })
+              );
+            }
+        
+            /* ───────────────────────── inline decorations ───────────────────────── */
             add(spec.prefix?.(m), spec.prefixClass);
             add(spec.hidden?.(m), spec.hiddenClass);
-            add([spec.content(m)], spec.contentClass);
+        
+            if (spec.content && spec.contentClass) {
+              log.debug("decorating inlines?")
+
+              add([spec.content(m)], spec.contentClass);
+            }
+        
             add(spec.suffix?.(m), spec.suffixClass);
           }
-  
+        
           return builder.finish();
         }
+        
       },
       { decorations: (v) => v.decorations }
     );
@@ -141,4 +203,5 @@ import {
       }
     }
   );
+  
   
