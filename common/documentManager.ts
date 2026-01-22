@@ -6,12 +6,13 @@ import { Logger } from '../common/logger.ts';
 const log = new Logger({ namespace: 'DocumentManager', minLevel: 'debug' });
 
 type DocumentId = string;
-const WSURL = `ws://${window.location.hostname}:11625/`;
+const WSURL = `ws://${window.location.hostname}:11625/notes/`;
 
 export type ManagedDocument = {
   id: DocumentId;
   ydoc: Y.Doc;
   ytext: Y.Text;
+  text: string;
   indexeddb: IndexeddbPersistence;
   provider?: WebsocketProvider;
 };
@@ -44,7 +45,8 @@ export function createDocumentManager(): DocumentManager {
 
     const indexeddb = new IndexeddbPersistence(`note:${docId}`, ydoc);
     await indexeddb.whenSynced;
-
+    log.debug(`ytext length for document ${docId} is: ${ytext.length}`)
+    
     // Hydrate from server if empty
     if (ytext.length === 0) {
       let content = options?.initialContent;
@@ -59,19 +61,23 @@ export function createDocumentManager(): DocumentManager {
         });
       }
     }
-
+    log.debug("ytext now has content")
     let provider;
+    
     if (options?.online) {
+      log.debug("starting websocket")
       provider = new WebsocketProvider(WSURL, docId, ydoc);
+      log.debug("instantiated websocketprovider")
       provider.awareness.setLocalStateField("user", {
         id: "user-" + Math.floor(Math.random() * 1000000),
         name: "User",
       });
+      log.debug("local field set")
       await new Promise<void>((resolve) => provider.once("sync", () => resolve()));
       log.debug(`WebSocket provider connected for ${docId}`);
     }
 
-    bundle = { id: docId, ydoc, ytext, indexeddb, provider };
+    bundle = { id: docId, ydoc, ytext, text: ytext.toString(), indexeddb, provider };
     docs.set(docId, bundle);
     return bundle;
   }
