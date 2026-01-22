@@ -18,6 +18,7 @@ node_modules/
 
 # notes
 *.db
+*.sqlite
 static/notes/*
 
 # dev stuff
