@@ -19,3 +19,6 @@ node_modules/
 # notes
 *.db
 static/notes/*
+
+# dev stuff
+**.old
