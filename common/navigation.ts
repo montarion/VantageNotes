@@ -1,6 +1,7 @@
 import { YjsEditor } from "./editor";
 import { Logger } from "./logger.ts";
 import { getLS, Note } from "./helpers.ts";
+import { MetadataExtractor } from "./metadata.ts";
 
 const log = new Logger({ namespace: "Navigation" });
 
@@ -163,8 +164,10 @@ export class Navigation {
     // Open the document via DocumentManager
     log.debug(clean)
     const doc = await window.documentManager.open(clean, { online: true });
-
     
+    // parse metadata //TODO: make that cache
+    let metadata = MetadataExtractor.extractMetadata(doc.text);
+    log.debug(metadata)
     // Use the editor method to switch document cleanly
     this.editor.switchDocument(doc);
     
