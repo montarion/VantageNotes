@@ -93,6 +93,7 @@ export class YjsEditor {
 
   /** Set editor content (updates Y.Text) */
   setValue(text: string) {
+    log.debug("Setting text to: ", text)
     this.doc.ydoc.transact(() => {
       this.doc.ytext.delete(0, this.doc.ytext.length);
       this.doc.ytext.insert(0, text);
