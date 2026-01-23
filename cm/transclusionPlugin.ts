@@ -28,7 +28,6 @@ export class TransclusionWidget extends WidgetType {
   alias: string | null;
   folded: boolean;
   editor?: EditorView;
-  nav: Navigation;
 
   constructor(spec: TransclusionSpec & { nav: Navigation }) {
     super();
@@ -73,7 +72,7 @@ export class TransclusionWidget extends WidgetType {
     // Load content asynchronously via Navigation
     (async () => {
       try {
-        const content = await this.nav.getFile(this.filename);
+        const content = await window.nav.getFile(this.filename);
         const shown = this.header
           ? extractHeaderSection(content, this.header)
           : content;
