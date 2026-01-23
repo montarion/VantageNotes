@@ -4,9 +4,11 @@
   --cm-text-color: white;
 }
 .cm-editor{
-    width: 80ch;
+    width: 100vw;
+    max-width: 80ch;
     border-left: 1px dashed rgba(80, 80, 80, 0.25);
     border-right: 1px dashed rgba(80, 80, 80, 0.25);
+    caret-color: white;;
 }
 
 .cm-tag.cm-link {
@@ -154,7 +156,11 @@
   margin: 0.75em 0;
 }
 
-
+.cm-code{
+  background-color: grey;
+}
+.cm-code-block{}
+.cm-code-inline{}
 .cm-blockquote {
   color: #94a3b8;
 }
