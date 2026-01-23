@@ -5,6 +5,7 @@ import { Logger } from "./common/logger.ts";
 import { exists } from "https://deno.land/std/fs/mod.ts";
 import { join, resolve } from "https://deno.land/std/path/mod.ts";
 import { serveYjs } from "./yjs-deno-ws/mod.ts";
+import "https://deno.land/std@0.224.0/dotenv/load.ts"; // for env access
 
 const log = new Logger("main");
 const NOTES_DIR = resolve("static/notes");
@@ -95,10 +96,12 @@ router.get("/api/metadata/:filename?", async (ctx) => {
 });
 
 // note read/write
-router.get("/notes/:filename", async (ctx) => {
-  const filePath = join(NOTES_DIR, ctx.params.filename);
+router.get("/notes/:filename+", async (ctx) => {
+  const filePath = join(NOTES_DIR, ctx.params.filename+".md");
+  let fexists = await exists(filePath)
   if (!(await exists(filePath))) {
-    ctx.response.status = 404;
+    log.debug("That file doesn't exist, 404 :/")
+    ctx.response.status = 405;
     ctx.response.body = "";
     return;
   }
@@ -106,9 +109,9 @@ router.get("/notes/:filename", async (ctx) => {
   ctx.response.type = "text/markdown; charset=utf-8";
 });
 
-router.post("/notes/:filename", async (ctx) => {
+router.post("/notes/:filename+", async (ctx) => {
   const body = await ctx.request.body({ type: "text" }).value;
-  const filePath = join(NOTES_DIR, ctx.params.filename);
+  const filePath = join(NOTES_DIR, ctx.params.filename+".md");
   await ensureFile(filePath);
   await Deno.writeTextFile(filePath, body);
   ctx.response.status = 201;
@@ -124,12 +127,19 @@ router.post("/notes/:filename", async (ctx) => {
 app.use(router.routes());
 app.use(router.allowedMethods());
 
+// SPA middleware
 app.use(async (ctx, next) => {
+  if (ctx.response.body !== undefined || ctx.response.status !== 404) {
+    return;
+  }
     const { pathname } = ctx.request.url;
-  
-    // Don't intercept APIs or notes
-    if (pathname.startsWith("/api/") || pathname.startsWith("/notes/")) {
-      await next();
+    log.debug(`requested path: ${pathname}`)
+    // Don't intercept APIs or websockets
+    if (
+      pathname.startsWith("/api/") ||
+      pathname.startsWith("/notes/") ||
+      pathname.startsWith("/ws/")
+    ) {
       return;
     }
   
@@ -153,6 +163,11 @@ app.use(async (ctx, next) => {
         } catch (err) {
         if (err.name !== "NotFoundError") throw err;
         }
+    }
+    if (pathname === "/static/manifest.json") {
+      log.debug("Got manifest request!")
+      ctx.response.headers.set("Access-Control-Allow-Origin", "*");
+      ctx.response.headers.set("Content-Type", "application/manifest+json");
     }
 
   await next();
@@ -178,11 +193,14 @@ setInterval(() => cleanupEmptyNotes(), 10 * 60 * 1000); // every 10min
 
 // ─── Start servers ─────────────────────────────
 async function main() {
-  const port = 11624;
+  const port = Deno.env.get("PORT");
+  const ws_port = Deno.env.get("WS_PORT");
+  log.warn("port is: ", port)
+  
   serveYjs({
-    port: 11625,
+    port: ws_port,
     persistence: "sqlite",
-    sqlitePath: "./yjs.sqlite"
+    sqlitePath: Deno.env.get("DB_PATH")
   });
   log.info(`Starting Deno Oak server on port ${port}`);
   await app.listen({ port });
