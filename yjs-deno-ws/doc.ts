@@ -18,10 +18,6 @@ export class DocManager {
     if (this.persistence) {
       await this.persistence.load(name, doc);
       doc.on("update", (update: Uint8Array) => {
-        log("DOC UPDATE", {
-            room: name,
-            bytes: update.length,
-          });
         this.persistence!.storeUpdate(name, update);
       });
     }

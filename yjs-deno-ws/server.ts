@@ -26,7 +26,6 @@ import {
     options?: { basePath?: string },
   ) {
     return async (req: Request): Promise<Response> => {
-      log("WS HANDLER START", { url: req.url, time: Date.now() });
   
       if (req.headers.get("upgrade") !== "websocket") {
         return new Response("Expected websocket", { status: 400 });
@@ -44,20 +43,11 @@ import {
       pathname = pathname.replace(/^\/+/, "").replace(/\/+$/, "");
       const docName = pathname || "default";
   
-      log("WS CONNECT", {
-        room: docName,
-        remote:
-          req.headers.get("x-forwarded-for") ??
-          req.headers.get("cf-connecting-ip") ??
-          "unknown",
-        ua: req.headers.get("user-agent"),
-      });
+      
   
       // --- Get or create room ---
       let room = rooms.get(docName);
-      log("trying to get room")
       if (!room) {
-        log("failed, creating room")
         const doc = await docManager.get(docName);
         const awareness = new awarenessProtocol.Awareness(doc);
   
@@ -93,13 +83,11 @@ import {
   
       // --- WS Handlers ---
       socket.onopen = () => {
-        log("socket opened")
         // Send full document state
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MESSAGE_SYNC);
         syncProtocol.writeSyncStep1(encoder, doc);
         socket.send(encoding.toUint8Array(encoder));
-        log("room data sent: length: ", encoding.toUint8Array(encoder).length)
         // Send current awareness of all clients
         const allStates = Array.from(awareness.getStates().keys());
         if (allStates.length > 0) {
@@ -159,7 +147,6 @@ import {
         );  
         if (sockets.size === 0) rooms.delete(docName);
   
-        log("WS CLOSE", { room: docName });
       };
   
       return response;
