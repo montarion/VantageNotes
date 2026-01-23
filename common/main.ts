@@ -35,21 +35,14 @@ nav.setEditor(editor);
 await nav.loadLastTab();
 
 
-
-
-await runLuaScript(`
-  PKM.query()
-  .tag("todo")
-  .olderThan(30)
-  .select("id", "title")
-  .sortBy("ageDays", "desc")
-  .limit(2)
-  .run()
-  :each(function(note)
-  print(note)
-      print(note.id, note.title)
-  end)
-`);
+// register pwa
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/static/scripts/sw.js")
+      .then(() => console.log("SW registered"))
+      .catch(console.error);
+  });
+}
 
 window.addEventListener("popstate", async () => {
   const path = window.location.pathname.replace(/^\/+/, "");
