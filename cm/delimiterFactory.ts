@@ -36,7 +36,6 @@ import { Logger } from "../common/logger.ts";
   
   /**
    * Creates a decoration-only plugin.
-   * Does NOT attach any click handlers — those are centralized.
    */
   export function createDelimitedHighlighter(spec: DelimitedSpec): Extension {
     return ViewPlugin.fromClass(
@@ -62,21 +61,26 @@ import { Logger } from "../common/logger.ts";
         build(view: EditorView): DecorationSet {
           const builder = new RangeSetBuilder<Decoration>();
           const text = view.state.doc.toString();
-          const cursors = view.state.selection.ranges.map((r) => r.head);
-        
+          const cursors = view.state.selection.ranges.map(r => r.head);
+  
           spec.regexp.lastIndex = 0;
           let m;
-        
+  
           while ((m = spec.regexp.exec(text))) {
             const from = m.index;
             const to = from + m[0].length;
-        
-            const active = cursors.some((pos) => pos > from && pos < to);
-        
+            const active = cursors.some(pos => pos > from && pos < to);
+  
+            const pending: Array<{ from: number; to: number; deco: Decoration }> = [];
+  
+            const push = (a: number, b: number, deco: Decoration) => {
+              pending.push({ from: a, to: b, deco });
+            };
+  
             const add = (ranges: [number, number][] | undefined, cls?: string) => {
               if (!ranges || !cls) return;
               for (const [a, b] of ranges) {
-                builder.add(
+                push(
                   a,
                   b,
                   Decoration.mark({
@@ -89,18 +93,16 @@ import { Logger } from "../common/logger.ts";
                 );
               }
             };
-            
+  
             /* ───────────────────────── line decoration ───────────────────────── */
-        
+  
             if (spec.line && (spec.lineClass || spec.lineClassWhen)) {
-              log.debug("doing lines")
               const linePos = spec.line(m);
               const extra = spec.lineClassWhen?.(m);
-        
               const cls = [spec.lineClass, extra].filter(Boolean).join(" ");
-        
+  
               if (cls) {
-                builder.add(
+                push(
                   linePos,
                   linePos,
                   Decoration.line({
@@ -113,13 +115,22 @@ import { Logger } from "../common/logger.ts";
                 );
               }
             }
-        
+  
+            /* ───────────────────────── inline decorations ───────────────────────── */
+  
+            add(spec.prefix?.(m), spec.prefixClass);
+            add(spec.hidden?.(m), spec.hiddenClass);
+  
+            if (spec.content && spec.contentClass) {
+              add([spec.content(m)], spec.contentClass);
+            }
+  
             /* ───────────────────────── block decoration ───────────────────────── */
-        
+  
             if (spec.block && spec.blockClass) {
-              log.debug("doing blocks")
               const { from: bFrom, to: bTo } = spec.block(m);
-              builder.add(
+              log.debug("pushing blocks!")
+              push(
                 bFrom,
                 bTo,
                 Decoration.mark({
@@ -131,27 +142,23 @@ import { Logger } from "../common/logger.ts";
                 })
               );
             }
-        
-            /* ───────────────────────── inline decorations ───────────────────────── */
-            add(spec.prefix?.(m), spec.prefixClass);
-            add(spec.hidden?.(m), spec.hiddenClass);
-        
-            if (spec.content && spec.contentClass) {
-              log.debug("decorating inlines?")
-
-              add([spec.content(m)], spec.contentClass);
-            }
-        
+  
             add(spec.suffix?.(m), spec.suffixClass);
+  
+            /* ───────────────────────── flush in order ───────────────────────── */
+  
+            pending
+              .sort((a, b) => a.from - b.from || a.to - b.to)
+              .forEach(({ from, to, deco }) => builder.add(from, to, deco));
           }
-        
+  
           return builder.finish();
         }
-        
       },
-      { decorations: (v) => v.decorations }
+      { decorations: v => v.decorations }
     );
   }
+  
   
   /**
    * Single centralized click handler for all link-like decorations.

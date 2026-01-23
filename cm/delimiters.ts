@@ -228,27 +228,81 @@ export const hrHighlighter = createDelimitedHighlighter({
 });
 
 /* ────────────────────────────── */
-/* Code fences (```lang)           */
+/* Code blocks (```lang … ```)    */
 /* ────────────────────────────── */
-export const codeFenceHighlighter = createDelimitedHighlighter({
-  regexp: /(^|\n)(```+)([^\n]*)/g,
+export const codeBlockHighlighter = createDelimitedHighlighter({
+  regexp: /(^|\n)(```+)([^\n]*)\n([\s\S]*?)(?:\n)?(\2)(?=\n|$)/g,
 
-  prefix: m => {
-    const start = m.index + m[1].length;
-    return [[start, start + m[2].length]];
+  // 🔥 always hide fences + lang
+  hidden: m => {
+    const openStart = m.index + m[1].length;
+    const openEnd = openStart + m[2].length + m[3].length;
+
+    const closeStart = m.index + m[0].lastIndexOf(m[5]);
+    const closeEnd = closeStart + m[5].length;
+
+    return [
+      [openStart, openEnd],   // ```lang
+      [closeStart, closeEnd], // ```
+    ];
   },
 
-  content: m => {
-    if (!m[3]) return undefined as any;
-    const start = m.index + m[1].length + m[2].length;
-    return [start, start + m[3].length];
+  hiddenClass: "cm-hidden",
+
+  // only decorate the code body
+  block: m => {
+    const start =
+      m.index +
+      m[1].length +
+      m[2].length +
+      m[3].length +
+      1;
+
+    return {
+      from: start,
+      to: start + m[4].length,
+    };
   },
 
-  prefixClass: "cm-code-fence",
-  contentClass: "cm-code-lang",
+  blockClass: "cm-code cm-code-block",
 
   type: "code-fence",
+  invalidateOnSelection: true,
 });
+
+
+/* ────────────────────────────── */
+/* Inline code (`code`)           */
+/* ────────────────────────────── */
+export const inlineCodeHighlighter = createDelimitedHighlighter({
+  // single backticks, no whitespace-only content
+  regexp: /(?<!`)`([^`\n]+)`/g,
+
+  // hide the backticks
+  hidden: m => {
+    const openTick = m.index;
+    const closeTick = m.index + m[0].length - 1;
+
+    return [
+      [openTick, openTick + 1],     // `
+      [closeTick, closeTick + 1],   // `
+    ];
+  },
+
+  hiddenClass: "cm-hidden",
+
+  // visible content
+  content: m => [
+    m.index + 1,
+    m.index + 1 + m[1].length,
+  ],
+
+  contentClass: "cm-code cm-code-inline",
+
+  type: "inline-code",
+  invalidateOnSelection: true,
+});
+
 
 
 // admonitions
