@@ -12,7 +12,7 @@ deno.lock
 .venv
 package.json
 package-lock.json
-
+**/.env
 # node
 node_modules/
 
