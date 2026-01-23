@@ -1,7 +1,7 @@
 // yjsEditor.ts
 import * as Y from "npm:yjs";
 import { EditorState, Extension, StateEffect } from "npm:@codemirror/state";
-import { EditorView, keymap, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor } from "npm:@codemirror/view";
+import { EditorView, keymap, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, scrollPastEnd } from "npm:@codemirror/view";
 import { history, defaultKeymap, indentWithTab } from "npm:@codemirror/commands";
 import { yCollab } from "npm:y-codemirror.next";
 import { autocompletion, closeBrackets } from "npm:@codemirror/autocomplete";
@@ -15,7 +15,7 @@ import {
 import { ManagedDocument } from "./documentManager.ts";
 import { Logger } from "./logger.ts";
 import { linkClickHandler } from "../cm/delimiterFactory.ts";
-import { headerHighlighter, tagHighlighter, wikilinkHighlighter, transclusionHighlighter, markdownLinkHighlighter, blockquoteHighlighter, hrHighlighter, codeFenceHighlighter, admonitionHighlighter } from "../cm/delimiters.ts";
+import { headerHighlighter, tagHighlighter, wikilinkHighlighter, transclusionHighlighter, markdownLinkHighlighter, blockquoteHighlighter, hrHighlighter, admonitionHighlighter, codeBlockHighlighter, inlineCodeHighlighter } from "../cm/delimiters.ts";
 import { runLuaScript } from "./luaVM.ts";
 import { frontmatterField } from "../cm/frontmatterPlugin.ts";
 import { markdownListDecorator } from "../cm/markdownListDecorator.ts";
@@ -30,6 +30,7 @@ export const baseExtensions = [
   markdown({
     codeLanguages: languages,
    }),
+  
   autocompletion({ override: ["homepage"], activateOnTyping: true }),
   keymap.of([indentWithTab, ...defaultKeymap]),
   highlightSpecialChars(),
@@ -51,7 +52,8 @@ export const baseExtensions = [
   markdownLinkHighlighter,
   blockquoteHighlighter,
   hrHighlighter,
-  codeFenceHighlighter,
+  codeBlockHighlighter,
+  inlineCodeHighlighter,
   admonitionHighlighter,
   luaExecutionPlugin(runLuaScript),
   markdownHeadingDecorator,
@@ -64,6 +66,10 @@ export const baseExtensions = [
   
   //clickableLinks,
 ];
+/* these are only for the main editor, not transclusions */
+const mainExtensions = [ 
+  scrollPastEnd()
+]
 export class YjsEditor {
   view: EditorView;
   doc: ManagedDocument;
@@ -73,6 +79,7 @@ export class YjsEditor {
 
     const extensions: Extension[] = [
       ...baseExtensions,
+      ...mainExtensions,
       yCollab(this.doc.ytext, this.doc.provider?.awareness),
 
     ];
@@ -114,6 +121,7 @@ export class YjsEditor {
       doc: newDoc.ytext.toString(),
       extensions:[
         ...baseExtensions,
+        ...mainExtensions,
         yCollab(newDoc.ytext, newDoc.provider?.awareness),
       ],
     });
