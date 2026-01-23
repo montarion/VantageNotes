@@ -186,6 +186,8 @@ export class Navigation {
     const tab = fromPath ?? fromLS;
     if (tab) {
       await this.switchTab(tab);
+    } else {
+      await this.switchTab("homepage")
     }
   }
 
