@@ -153,8 +153,6 @@ function makeResult(notes: any[], selectFields?: string[]) {
   return {
     each(fn: Function) {
       for (let note of notes) {
-          console.log(note)
-          console.log(selectFields)
         if (selectFields && selectFields.length > 0) {
           // keep only selected keys
           note = selectFields.reduce((acc: any, key) => {
