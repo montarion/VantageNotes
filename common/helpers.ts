@@ -1,5 +1,7 @@
+import { HighlightStyle, tags } from "npm:@codemirror/highlight";
+
 import { Logger } from './logger.ts';
-const log = new Logger({ namespace: 'Logger', minLevel: 'debug' });
+const log = new Logger({ namespace: 'helper', minLevel: 'debug' });
 
 export function setLS(key: string, value: any) {
     try {
@@ -102,3 +104,66 @@ export type Note = {
   
     return { from: start, to: end };
   }
+
+  export function findUntilBlankLine(
+    text: string,
+    start: number,
+  ) {
+    const match = /\n\s*\n/.exec(text.slice(start));
+  
+    if (!match) {
+      return { from: start, to: text.length };
+    }
+  
+    return {
+      from: start,
+      to: start + match.index,
+    };
+  }
+
+  /*
+  export const blockHighlightStyle = HighlightStyle.define([
+    // Keywords
+    { tag: tags.keyword, class: "cm-keyword" },
+    { tag: tags.controlKeyword, class: "cm-keyword" },
+    { tag: tags.operatorKeyword, class: "cm-keyword" },
+  
+    // Names
+    { tag: tags.variableName, class: "cm-variable" },
+    { tag: tags.typeName, class: "cm-type" },
+    { tag: tags.className, class: "cm-class" },
+    { tag: tags.namespace, class: "cm-namespace" },
+  
+    // Literals
+    { tag: tags.string, class: "cm-string" },
+    { tag: tags.string.special, class: "cm-string-special" },
+    { tag: tags.number, class: "cm-number" },
+    { tag: tags.bool, class: "cm-bool" },
+    { tag: tags.null, class: "cm-null" },
+  
+    // Comments
+    { tag: tags.comment, class: "cm-comment" },
+    { tag: tags.comment.line, class: "cm-comment" },
+    { tag: tags.comment.block, class: "cm-comment" },
+  
+    // Operators & punctuation
+    { tag: tags.operator, class: "cm-operator" },
+    { tag: tags.punctuation, class: "cm-punctuation" },
+    { tag: tags.bracket, class: "cm-bracket" },
+  
+    // Properties & attributes
+    { tag: tags.propertyName, class: "cm-property" },
+    { tag: tags.attributeName, class: "cm-attribute" },
+  
+    // Special syntax
+    { tag: tags.escape, class: "cm-escape" },
+    { tag: tags.regexp, class: "cm-regexp" },
+  
+    // Markdown / meta
+    { tag: tags.heading, class: "cm-heading" },
+    { tag: tags.strong, class: "cm-strong" },
+    { tag: tags.emphasis, class: "cm-emphasis" },
+    { tag: tags.link, class: "cm-link" },
+    { tag: tags.url, class: "cm-url" },
+  ]);
+  */
