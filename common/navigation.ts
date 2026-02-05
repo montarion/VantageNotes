@@ -1,6 +1,6 @@
 import { YjsEditor } from "./editor";
 import { Logger } from "./logger.ts";
-import { getLS, Note } from "./helpers.ts";
+import { getLS, Note, setLS } from "./helpers.ts";
 import { MetadataExtractor } from "./metadata.ts";
 
 const log = new Logger({ namespace: "Navigation" });
@@ -146,7 +146,9 @@ export class Navigation {
       for (const note of this.flattenTree(tree)) {
         this.notesMap[note.path] = note;
       }
-
+      log.debug(this.notesMap)
+      setLS("all_notes", Object.keys(this.notesMap))
+      
       this.populateNavigation();
     } catch (err) {
       console.error(err);
