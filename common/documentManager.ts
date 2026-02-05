@@ -68,7 +68,6 @@ export function createDocumentManager(): DocumentManager {
     });
     await new Promise<void>((resolve) => provider.once("sync", () => resolve()));
     
-
     bundle = { id: docId, ydoc, ytext, text: ytext.toString(), indexeddb, provider };
     docs.set(docId, bundle);
     return bundle;
