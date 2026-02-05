@@ -14,11 +14,11 @@ export class DocManager {
 
     doc = new Y.Doc();
     this.docs.set(name, doc);
-
+    
     if (this.persistence) {
       await this.persistence.load(name, doc);
-      doc.on("update", (update: Uint8Array) => {
-        this.persistence!.storeUpdate(name, update);
+      doc.on("update", async (update: Uint8Array) => {
+        await this.persistence!.storeUpdate(name, update);
       });
     }
 

@@ -35,12 +35,14 @@ import {
       const url = new URL(req.url);
       const basePath = options?.basePath ?? "/static/notes/";
       let pathname = url.pathname;
+
   
       // Normalize path
       if (basePath !== "/" && pathname.startsWith(basePath)) {
         pathname = pathname.slice(basePath.length);
       }
-      pathname = pathname.replace(/^\/+/, "").replace(/\/+$/, "");
+      pathname = pathname.replace(/^\/+/, "").replace(/\/+$/, "").slice(3);
+
       const docName = pathname || "default";
   
       
