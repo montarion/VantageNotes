@@ -18,7 +18,7 @@ window.toast = toast
 const nav = new Navigation();
 window.nav = nav
 
-await nav.updateFileList()
+nav.showNavigation()
 window.documentManager = createDocumentManager();
 
 // Create a single editor container
