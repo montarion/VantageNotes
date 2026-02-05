@@ -1,3 +1,4 @@
+// DelimiterFactory.ts
 import {
     ViewPlugin,
     Decoration,
@@ -27,7 +28,7 @@ import { Logger } from "../common/logger.ts";
   
 
     /* Block-level decoration */
-    block?: (match: RegExpExecArray) => { from: number; to: number };
+    block?: (match: RegExpExecArray, view: EditorView) => { from: number; to: number } | undefined;
     blockClass?: string;
     type?: string;
     getTarget?: (match: RegExpExecArray) => string;
@@ -62,29 +63,33 @@ import { Logger } from "../common/logger.ts";
           const builder = new RangeSetBuilder<Decoration>();
           const text = view.state.doc.toString();
           const cursors = view.state.selection.ranges.map(r => r.head);
-  
+        
           spec.regexp.lastIndex = 0;
           let m;
-  
+        
+          const resolveClass = (cls: string | ((match: RegExpExecArray) => string) | undefined, match: RegExpExecArray) =>
+            typeof cls === "function" ? cls(match) : cls;
+        
           while ((m = spec.regexp.exec(text))) {
             const from = m.index;
             const to = from + m[0].length;
             const active = cursors.some(pos => pos > from && pos < to);
-  
+        
             const pending: Array<{ from: number; to: number; deco: Decoration }> = [];
-  
+        
             const push = (a: number, b: number, deco: Decoration) => {
               pending.push({ from: a, to: b, deco });
             };
-  
-            const add = (ranges: [number, number][] | undefined, cls?: string) => {
+        
+            const add = (ranges: [number, number][] | undefined, cls?: string | ((m: RegExpExecArray) => string)) => {
               if (!ranges || !cls) return;
+              const resolvedCls = resolveClass(cls, m);
               for (const [a, b] of ranges) {
                 push(
                   a,
                   b,
                   Decoration.mark({
-                    class: active ? `${cls} cm-visible` : cls,
+                    class: active ? `${resolvedCls} cm-visible` : resolvedCls,
                     attributes: {
                       "data-link": spec.type ?? "unknown",
                       "data-target": spec.getTarget ? spec.getTarget(m) : m[1] || m[0],
@@ -93,14 +98,17 @@ import { Logger } from "../common/logger.ts";
                 );
               }
             };
-  
+        
             /* ───────────────────────── line decoration ───────────────────────── */
-  
-            if (spec.line && (spec.lineClass || spec.lineClassWhen)) {
+            if (spec.line) {
               const linePos = spec.line(m);
-              const extra = spec.lineClassWhen?.(m);
-              const cls = [spec.lineClass, extra].filter(Boolean).join(" ");
-  
+        
+              let cls = resolveClass(spec.lineClass, m);
+              if (spec.lineClassWhen) {
+                const extra = spec.lineClassWhen(m);
+                cls = [cls, extra].filter(Boolean).join(" ");
+              }
+        
               if (cls) {
                 push(
                   linePos,
@@ -115,45 +123,50 @@ import { Logger } from "../common/logger.ts";
                 );
               }
             }
-  
+        
             /* ───────────────────────── inline decorations ───────────────────────── */
-  
             add(spec.prefix?.(m), spec.prefixClass);
             add(spec.hidden?.(m), spec.hiddenClass);
-  
             if (spec.content && spec.contentClass) {
               add([spec.content(m)], spec.contentClass);
             }
-  
-            /* ───────────────────────── block decoration ───────────────────────── */
-  
-            if (spec.block && spec.blockClass) {
-              const { from: bFrom, to: bTo } = spec.block(m);
-              log.debug("pushing blocks!")
-              push(
-                bFrom,
-                bTo,
-                Decoration.mark({
-                  class: spec.blockClass,
-                  attributes: {
-                    "data-link": spec.type ?? "unknown",
-                    "data-target": spec.getTarget ? spec.getTarget(m) : m[0],
-                  },
-                })
-              );
-            }
-  
             add(spec.suffix?.(m), spec.suffixClass);
-  
+        
+            /* ───────────────────────── block decoration ───────────────────────── */
+            if (spec.block && spec.blockClass) {
+              //const { from: bFrom, to: bTo } = spec.block(m);
+              const block = spec.block(m, view);
+              if (!block || block.from >= block.to) continue;
+
+              const { from: bFrom, to: bTo } = block;
+              let lineStart = bFrom;
+              while (lineStart <= bTo) {
+                const lineEnd = view.state.doc.lineAt(lineStart).to;
+                const cls = resolveClass(spec.blockClass, m);
+                push(
+                  lineStart,
+                  lineStart,
+                  Decoration.line({
+                    class: cls,
+                    attributes: {
+                      "data-link": spec.type ?? "unknown",
+                      "data-target": spec.getTarget ? spec.getTarget(m) : m[0],
+                    },
+                  })
+                );
+                lineStart = lineEnd + 1;
+              }
+            }
+        
             /* ───────────────────────── flush in order ───────────────────────── */
-  
             pending
               .sort((a, b) => a.from - b.from || a.to - b.to)
               .forEach(({ from, to, deco }) => builder.add(from, to, deco));
           }
-  
+        
           return builder.finish();
         }
+        
       },
       { decorations: v => v.decorations }
     );

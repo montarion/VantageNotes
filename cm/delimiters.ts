@@ -1,9 +1,27 @@
 //delimiters.ts
 
-import { findIndentedBlock, previousLineIsQuote } from "../common/helpers.ts";
+import { findIndentedBlock, findUntilBlankLine, previousLineIsQuote } from "../common/helpers.ts";
 import { Logger } from "../common/logger.ts";
 import { createDelimitedHighlighter } from "./delimiterFactory.ts";
 const log = new Logger({ namespace: "Delimiter" });
+
+
+
+function isCalloutStart(m: RegExpExecArray) {
+  if (previousLineIsQuote(m)) return null;
+  const text = m[3]; // already stripped of `> `
+  const match = text.match(CALLOUT_RE);
+  if (!match) return null;
+  return {
+    type: match[1],
+    title: match[2] ?? "",
+  };
+}
+function isCalloutLine(m: RegExpExecArray) {
+  const text = m[3]; // text after '> '
+  return /^\[!\w+\]/.test(text); // matches [!TYPE]
+}
+
 
 /* ────────────────────────────── */
 /* Tags (#tag)           */
@@ -180,14 +198,14 @@ export const wikilinkHighlighter = createDelimitedHighlighter({
   /* ────────────────────────────── */
 /* Blockquotes (> quote)          */
 /* ────────────────────────────── */
-export const blockquoteHighlighter = createDelimitedHighlighter({
+export const blockquoteDelimiter = createDelimitedHighlighter({
   regexp: /(^|\n)(>+)\s*([^\n]*)/g,
 
   line: m => m.index + m[1].length,
 
   prefix: m => {
     const start = m.index + m[1].length;
-    return [[start, start + m[2].length + 1]];
+    return [[start, start + m[2].length + 1]]; // '>+' marker
   },
 
   content: m => {
@@ -199,12 +217,82 @@ export const blockquoteHighlighter = createDelimitedHighlighter({
   contentClass: "cm-quote",
   lineClass: "cm-quote-line",
 
-  /** 🔥 NEW */
-  lineClassWhen: m =>
-    previousLineIsQuote(m) ? null : "cm-quote-start",
-
-
+  lineClassWhen: m => {
+    if (isCalloutLine(m)) return null; // skip callout lines
+    return previousLineIsQuote(m) ? null : "cm-quote-start";
+  },
+  block: m => {
+    if (isCalloutLine(m)) return null; // don't create a block
+    const start = m.index + m[1].length;
+    const end = start + m[0].length;
+    if (end <= start) return null;
+    return { from: start, to: end };
+  },
   type: "blockquote",
+  invalidateOnSelection: true,
+});
+
+// Regex: start of line, >, space, [!TYPE], optional title
+const CALLOUT_RE = /^> \[!(\w+)\](?:\s+(.*))?/;
+
+function parseCallout(m: RegExpExecArray) {
+  const match = m[0].match(CALLOUT_RE);
+  if (!match) return null;
+  return { type: match[1], title: match[2] ?? "" };
+}
+
+function calloutBlockRange(m: RegExpExecArray, text: string) {
+  // Start after header line
+  const headerEnd = text.indexOf("\n", m.index) + 1;
+  if (headerEnd === 0) return null;
+
+  let end = headerEnd;
+  while (end < text.length) {
+    const lineEnd = text.indexOf("\n", end);
+    const line = text.slice(end, lineEnd === -1 ? undefined : lineEnd);
+    if (!line.startsWith(">")) break; // stop at first non-> line
+    end = lineEnd === -1 ? text.length : lineEnd + 1;
+  }
+  return { from: headerEnd, to: end };
+}
+
+export const calloutDelimiter = createDelimitedHighlighter({
+  regexp: /(^|\n)> \[!(\w+)\](?:\s+(.*))?/g,
+
+  line: m => m.index + (m[1]?.length || 0),
+
+  lineClassWhen: m => {
+    const callout = parseCallout(m);
+    return callout ? `cm-callout-start cm-callout-${callout.type}` : null;
+  },
+
+  hidden: m => {
+    // Hide the [!TYPE] marker
+    const start = m.index + (m[1]?.length || 0) + 3; // '> [!'
+    const end = start + m[2].length; // TYPE
+    return [[start, end]];
+  },
+  hiddenClass: "cm-hidden",
+
+  content: m => {
+    const callout = parseCallout(m);
+    if (!callout?.title) return undefined;
+    const start = m.index + (m[1]?.length || 0) + 4 + callout.type.length; // after '> [!TYPE] '
+    return [[start, start + callout.title.length]];
+  },
+  contentClass: "cm-admonition-title",
+
+  block: (m, view) => {
+    const text = view.state.doc.toString();
+    return calloutBlockRange(m, text);
+  },
+  blockClass: m => {
+    const callout = parseCallout(m);
+    return callout ? `cm-callout cm-callout-${callout.type}` : "";
+  },
+
+  type: "admonition",
+  getTarget: m => m[2], // TYPE
   invalidateOnSelection: true,
 });
 
@@ -305,52 +393,11 @@ export const inlineCodeHighlighter = createDelimitedHighlighter({
 
 
 
-// admonitions
-export const admonitionHighlighter = createDelimitedHighlighter({
-  regexp: /(^|\n)!!!\s+([a-zA-Z0-9_-]+)(?:\s+(.*))?/g,
 
-  // header line decoration
-  line: m => m.index + m[1].length,
-  lineClass: "cm-admonition-header",
 
-  // hide !!!
-  hidden: m => {
-    const start = m.index + m[1].length;
-    return [[start, start + 3]];
-  },
-  hiddenClass: "cm-hidden",
 
-  // decorate the TYPE
-  prefix: m => {
-    const start = m.index + m[1].length + 4; // !!!␠
-    return [[start, start + m[2].length]];
-  },
 
-  // decorate the TITLE (if any)
-  content: m => {
-    if (!m[3]) return undefined as any;
-    const start =
-      m.index + m[1].length + 4 + m[2].length + 1;
-    return [start, start + m[3].length];
-  },
 
-  prefixClass: "cm-admonition-type",
-  contentClass: "cm-admonition-title",
-
-  // body block (unchanged)
-  block: m => {
-    const text = m.input;
-    const headerEnd =
-      text.indexOf("\n", m.index) + 1;
-
-    return findIndentedBlock(text, headerEnd);
-  },
-  blockClass: "cm-admonition-body",
-
-  type: "admonition",
-  getTarget: m => m[2], // still the type
-  invalidateOnSelection: true,
-});
 
 /* ────────────────────────────── */
 /* Entity references (@thing|alias) */
