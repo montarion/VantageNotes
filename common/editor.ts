@@ -15,14 +15,19 @@ import {
 import { ManagedDocument } from "./documentManager.ts";
 import { Logger } from "./logger.ts";
 import { linkClickHandler } from "../cm/delimiterFactory.ts";
-import { headerHighlighter, tagHighlighter, wikilinkHighlighter, transclusionHighlighter, markdownLinkHighlighter, blockquoteHighlighter, hrHighlighter, admonitionHighlighter, codeBlockHighlighter, inlineCodeHighlighter } from "../cm/delimiters.ts";
+import { headerHighlighter, tagHighlighter, wikilinkHighlighter, transclusionHighlighter, markdownLinkHighlighter, hrHighlighter, codeBlockHighlighter, inlineCodeHighlighter, blockquoteDelimiter, calloutDelimiter } from "../cm/delimiters.ts";
 import { runLuaScript } from "./luaVM.ts";
 import { frontmatterField } from "../cm/frontmatterPlugin.ts";
 import { markdownListDecorator } from "../cm/markdownListDecorator.ts";
 import { markdownHeadingDecorator } from "../cm/markdownHeadingPlugin.ts";
 import { luaExecutionPlugin } from "../cm/luaExecutionPlugin.ts";
 import { createTransclusionField } from "../cm/transclusionPlugin.ts";
-import { markdownHrDecorator } from "../cm/markdownHrDecorator.ts";
+import { dslLanguage } from "../cm/dsl.ts";
+import { calloutField } from "../cm/calloutplugin.ts";
+import { calloutRenderer, createRenderedBlockField } from "../cm/renderedblock.ts";
+import { blockquoteRenderer } from "../cm/blockquoteplugin.ts";
+import { codeblockRenderer } from "../cm/codeblockplugin.ts";
+import { wikiLinkCompletion } from "../cm/autocompleteProviders.ts";
 
 const log = new Logger({ namespace: "Editor" });
 
@@ -31,7 +36,7 @@ export const baseExtensions = [
     codeLanguages: languages,
    }),
   
-  autocompletion({ override: ["homepage"], activateOnTyping: true }),
+  autocompletion({ override: [wikiLinkCompletion], activateOnTyping: true }),
   keymap.of([indentWithTab, ...defaultKeymap]),
   highlightSpecialChars(),
   history(),
@@ -50,18 +55,20 @@ export const baseExtensions = [
   wikilinkHighlighter,
   transclusionHighlighter,
   markdownLinkHighlighter,
-  blockquoteHighlighter,
+  //calloutField,
+  createRenderedBlockField([calloutRenderer, blockquoteRenderer, codeblockRenderer]),
+  //blockquoteDelimiter,
   hrHighlighter,
-  codeBlockHighlighter,
+  //codeBlockHighlighter,
   inlineCodeHighlighter,
-  admonitionHighlighter,
   luaExecutionPlugin(runLuaScript),
   markdownHeadingDecorator,
   markdownListDecorator,
   frontmatterField,
   createTransclusionField(),
   linkClickHandler,
-  //markdownHrDecorator,
+  dslLanguage,
+  
   
   
   //clickableLinks,
