@@ -1,8 +1,8 @@
 {
   "tasks": {
     "watch": "deno run --allow-read --allow-write --allow-env --allow-net --allow-run watcher.ts",
-    "bundle": "deno run --allow-read --allow-write --allow-env --allow-net --allow-run bundler.ts",
-    "run": "deno run --unstable-kv --allow-read=.env,.env.defaults,.env.example,./static/notes/,./yjs.sqlite,./yjs.sqlite-journal --allow-net --allow-env --allow-write=./static/notes/,./yjs.sqlite,./yjs.sqlite-journal main.ts"
+    "bundle": "deno bundle --platform=browser --sourcemap /home/jamiro/code/vantagenotes/common/main.ts -o static/dist/main.bundle.js",
+    "run": "deno run --unstable-kv  --allow-ffi --allow-read=.env,.env.defaults,.env.example,templates/,./static/,./yjs.sqlite,./yjs.sqlite-journal,/home/jamiro/.cache/deno/plug,vantagenotes.db,vantagenotes.db-journal --allow-net --allow-env --allow-write=./static/notes/,./yjs.sqlite,./yjs.sqlite-journal,vantagenotes.db,vantagenotes.db-journal main.ts"
   },
   "compilerOptions": {
     "strict": true,
