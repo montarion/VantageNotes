@@ -12,7 +12,6 @@ class VNEntity extends VNComponent {
           border-radius: 8px;
           padding: 10px;
           margin-bottom: 10px;
-          background: #fafafa;
         }
 
         .badge {

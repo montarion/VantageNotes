@@ -10,6 +10,7 @@
 import { MetadataExtractor } from "./metadata.ts";
 import "./webcomponents/index.ts"
 import { Logger } from "./logger.ts";
+import { getApp } from "./app.ts";
 
 const log = new Logger({ namespace: "Sidebar" });
 
@@ -91,22 +92,9 @@ export interface VNObject {
   
       // Clear sidebar before rendering new content
       this.clear();
-  
-      // Fetch objects linked to this file
-      //const objects = await this.fetchObjectsForNote(noteId);
-      const objects2 = [
-        {
-          id: "019c8680-705e-7d08-93d6-13f2c04dac10",
-          type: "link",
-          title: "test-title",
-          properties:{
-            "foo":"bar"
-          }
-
-        }
-      ]
-      const objects = await this.buildObjectsFromMetadata(window.documentManager.getText(noteId))
-      log.debug(objects)
+      const {documentManager} = getApp()
+      const objects = await this.buildObjectsFromMetadata(await documentManager.getText(noteId))
+      log.debug({objects})
       // Render each object as a card
       objects.forEach((obj) => {
         const card = this.createObjectCard(obj);
@@ -115,7 +103,7 @@ export interface VNObject {
     }
   
     private async buildObjectsFromMetadata(noteText: string): Promise<VNObject[]> {
-      const metadata = MetadataExtractor.extractMetadata(noteText);
+      const metadata = await MetadataExtractor.extractMetadata(noteText);
       const objects: VNObject[] = [];
     
       /* ───── Wikilinks → link objects ───── */
@@ -141,7 +129,6 @@ export interface VNObject {
           }
         )
         const meta = await preogpdata.json()
-        log.debug(meta)
         objects.push({
           id: `ext:${url}`,
           type: "external-link",
@@ -273,7 +260,6 @@ export interface VNObject {
     
         case "image":
           const img = document.createElement("img");
-          log.warn("trying image with url: " + `/image?url=${encodeURIComponent(value)}`)
           img.src = `https://previewproxy.jamirograntsaan.nl/image?url=${encodeURIComponent(value)}`;;
           img.classList.add("vn-image");
           el.appendChild(img);
@@ -286,12 +272,7 @@ export interface VNObject {
       return el;
     }
   
-    private renderLinkPreview(obj: VNObject, def: RenderDefinition): HTMLElement {
-      log.debug(obj)
-      log.debug(def)
-      const el = document.createElement("div");
-      return el
-    }
+
     /**
      * Clears sidebar contents.
      */
