@@ -1,7 +1,7 @@
 // yjsEditor.ts
 import * as Y from "npm:yjs";
 import { EditorState, Extension, StateEffect } from "npm:@codemirror/state";
-import { EditorView, keymap, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, scrollPastEnd } from "npm:@codemirror/view";
+import { EditorView, keymap, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, lineNumbers, crosshairCursor, scrollPastEnd } from "npm:@codemirror/view";
 import { history, defaultKeymap, indentWithTab } from "npm:@codemirror/commands";
 import { yCollab } from "npm:y-codemirror.next";
 import { autocompletion, closeBrackets } from "npm:@codemirror/autocomplete";
@@ -27,52 +27,58 @@ import { calloutField } from "../cm/calloutplugin.ts";
 import { calloutRenderer, createRenderedBlockField } from "../cm/renderedblock.ts";
 import { blockquoteRenderer } from "../cm/blockquoteplugin.ts";
 import { codeblockRenderer } from "../cm/codeblockplugin.ts";
-import { wikiLinkCompletion } from "../cm/autocompleteProviders.ts";
+import { atNoteCompletion, wikiLinkCompletion } from "../cm/autocompleteProviders.ts";
+import { clickHandler } from "../cm/clickhandler.ts";
 
 const log = new Logger({ namespace: "Editor" });
 
-export const baseExtensions = [
-  markdown({
-    codeLanguages: languages,
-   }),
-  
-  autocompletion({ override: [wikiLinkCompletion], activateOnTyping: true }),
-  keymap.of([indentWithTab, ...defaultKeymap]),
-  highlightSpecialChars(),
-  history(),
-  drawSelection(),
-  dropCursor(),
-  EditorState.allowMultipleSelections.of(true),
-  indentOnInput(),
-  syntaxHighlighting(defaultHighlightStyle),
-  bracketMatching(),
-  closeBrackets(),
-  rectangularSelection(),
-  crosshairCursor(),
-  EditorView.lineWrapping,
-  headerHighlighter,
-  tagHighlighter,
-  wikilinkHighlighter,
-  transclusionHighlighter,
-  markdownLinkHighlighter,
-  //calloutField,
-  createRenderedBlockField([calloutRenderer, blockquoteRenderer, codeblockRenderer]),
-  //blockquoteDelimiter,
-  hrHighlighter,
-  //codeBlockHighlighter,
-  inlineCodeHighlighter,
-  luaExecutionPlugin(runLuaScript),
-  markdownHeadingDecorator,
-  markdownListDecorator,
-  frontmatterField,
-  createTransclusionField(),
-  linkClickHandler,
-  dslLanguage,
-  
-  
-  
-  //clickableLinks,
-];
+
+function createbaseExtensions(){
+  return [
+    markdown({
+      codeLanguages: languages,
+    }),
+    lineNumbers(),
+    autocompletion({ override: [wikiLinkCompletion, atNoteCompletion], activateOnTyping: true }),
+    keymap.of([indentWithTab, ...defaultKeymap]),
+    highlightSpecialChars(),
+    history(),
+    drawSelection(),
+    dropCursor(),
+    EditorState.allowMultipleSelections.of(true),
+    indentOnInput(),
+    syntaxHighlighting(defaultHighlightStyle),
+    bracketMatching(),
+    closeBrackets(),
+    rectangularSelection(),
+    crosshairCursor(),
+    EditorView.lineWrapping,
+    headerHighlighter,
+    tagHighlighter,
+    wikilinkHighlighter,
+    transclusionHighlighter,
+    markdownLinkHighlighter,
+    calloutField,
+    createRenderedBlockField([blockquoteRenderer, codeblockRenderer]),
+    //createRenderedBlockField([codeblockRenderer]),
+
+    //blockquoteDelimiter,
+    hrHighlighter,
+    //codeBlockHighlighter,
+    inlineCodeHighlighter,
+    luaExecutionPlugin(runLuaScript),
+    markdownHeadingDecorator,
+    markdownListDecorator,
+    //frontmatterField,
+    createTransclusionField(),
+    linkClickHandler,
+    dslLanguage,
+    clickHandler,
+    
+    
+    //clickableLinks,
+  ]
+}
 /* these are only for the main editor, not transclusions */
 const mainExtensions = [ 
   scrollPastEnd()
@@ -80,12 +86,27 @@ const mainExtensions = [
 export class YjsEditor {
   view: EditorView;
   doc: ManagedDocument;
+  baseExtensions: Array<any>;
 
   constructor(container: HTMLElement, doc: ManagedDocument) {
     this.doc = doc;
 
+    const clickHandler = EditorView.domEventHandlers({
+      click(event, view) {
+        const target = event.target as HTMLElement;
+    
+        if (target.dataset.action === "run-code") {
+          console.log("run clicked");
+          return true; // handled
+        }
+    
+        return false;
+      }
+    });
+
+    
     const extensions: Extension[] = [
-      ...baseExtensions,
+      ...createbaseExtensions(),
       ...mainExtensions,
       yCollab(this.doc.ytext, this.doc.provider?.awareness),
 
@@ -98,7 +119,11 @@ export class YjsEditor {
       }),
       parent: container,
     });
+
+    
   }
+
+  
 
   /** Get current editor content */
   getValue(): string {
@@ -107,7 +132,6 @@ export class YjsEditor {
 
   /** Set editor content (updates Y.Text) */
   setValue(text: string) {
-    log.debug("Setting text to: ", text)
     this.doc.ydoc.transact(() => {
       this.doc.ytext.delete(0, this.doc.ytext.length);
       this.doc.ytext.insert(0, text);
@@ -127,7 +151,7 @@ export class YjsEditor {
     const state = EditorState.create({
       doc: newDoc.ytext.toString(),
       extensions:[
-        ...baseExtensions,
+        ...createbaseExtensions(),
         ...mainExtensions,
         yCollab(newDoc.ytext, newDoc.provider?.awareness),
       ],
@@ -151,7 +175,7 @@ export function createReadOnlyEditor(parent: HTMLElement, content: string): Edit
     state: EditorState.create({
       doc: content,
       extensions: [
-        ...baseExtensions,
+        ...createbaseExtensions(),
         EditorView.editable.of(false),      // read-only
         highlightSpecialChars(),
         drawSelection(),
