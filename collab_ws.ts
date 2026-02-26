@@ -20,6 +20,7 @@ let store: MetadataStore | undefined;
 async function getDoc(filename: string): Promise<Y.Doc> {
   if (!docs.has(filename)) {
     const ydoc = new Y.Doc();
+    filename = decodeURI(filename)
     const filePath = join(NOTES_DIR, filename.endsWith(".md") ? filename : filename + ".md");
 
     // Load file if exists
