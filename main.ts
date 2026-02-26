@@ -6,6 +6,9 @@ import { exists } from "https://deno.land/std/fs/mod.ts";
 import { join, resolve } from "https://deno.land/std/path/mod.ts";
 import { serveYjs } from "./yjs-deno-ws/mod.ts";
 import "https://deno.land/std@0.224.0/dotenv/load.ts"; // for env access
+import { createMetadataIndexer } from "./common/metadataindexer.ts";
+import { readdir, readFile } from "node:fs/promises";
+import { createServerDB } from "./common/server-db.ts";
 
 const log = new Logger("main");
 const NOTES_DIR = resolve("static/notes");
@@ -100,9 +103,9 @@ router.get("/notes/:filename+", async (ctx) => {
   const filePath = join(NOTES_DIR, ctx.params.filename+".md");
   let fexists = await exists(filePath)
   if (!(await exists(filePath))) {
-    log.debug("That file doesn't exist, 404 :/")
-    ctx.response.status = 405;
+    await ensureFile(filePath);
     ctx.response.body = "";
+    ctx.response.type = "text/markdown; charset=utf-8";
     return;
   }
   ctx.response.body = await Deno.readTextFile(filePath);
@@ -111,7 +114,7 @@ router.get("/notes/:filename+", async (ctx) => {
 
 router.post("/notes/:filename+", async (ctx) => {
   const body = await ctx.request.body({ type: "text" }).value;
-  const filePath = join(NOTES_DIR, ctx.params.filename+".md");
+  const filePath = decodeURI(join(NOTES_DIR, ctx.params.filename+".md"));
   await ensureFile(filePath);
   await Deno.writeTextFile(filePath, body);
   ctx.response.status = 201;
@@ -123,6 +126,23 @@ router.post("/notes/:filename+", async (ctx) => {
 //  const path = ctx.params.path || "index.html";
 //  await send(ctx, path, { root: "static/" });
 //});
+
+// COOP + COEP headers for SharedArrayBuffer / OPFS
+app.use(async (ctx, next) => {
+  ctx.response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  ctx.response.headers.set("Cross-Origin-Embedder-Policy", "require-corp");
+  await next();
+});
+
+// catch sqlite requests
+app.use(async (ctx, next) => {
+  if (ctx.request.url.pathname.startsWith("/static/dist/sqlite3-worker1.mjs")) {
+    const path = ctx.request.url.pathname.replace("/static/dist/sqlite3-worker1.mjs", "");
+    await send(ctx, path, { root: "./static/scripts/sqlite3-worker1.mjs" });
+    return;
+  }
+  await next();
+});
 
 app.use(router.routes());
 app.use(router.allowedMethods());
@@ -191,11 +211,67 @@ app.use(async (ctx, next) => {
 // ─── Periodic cleanup ─────────────────────────
 setInterval(() => cleanupEmptyNotes(), 10 * 60 * 1000); // every 10min
 
+async function walk(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true });
+
+  const files = await Promise.all(
+    entries.map(async (entry) => {
+      const fullPath = join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        return walk(fullPath);
+      }
+
+      if (entry.isFile() && entry.name.endsWith(".md")) {
+        return [fullPath];
+      }
+
+      return [];
+    })
+  );
+
+  return files.flat();
+}
+
+async function updateMetadata(){
+  log.info("Filling db");
+
+  const db = createServerDB("vantagenotes.db");
+  const metadataIndexer = createMetadataIndexer(db);
+  await metadataIndexer.init();
+
+  const files = await walk("static/notes");
+
+  for (const filePath of files) {
+    try {
+      const text = await readFile(filePath, "utf8");
+
+      const metadata = await MetadataExtractor.extractMetadata(text);
+      log.debug(`metadata for file ${filePath}`)
+      //log.debug(metadata)
+
+      // Use relative path without extension as docId
+      const docId = filePath
+        .replace(/^static\/notes\//, "")
+        .replace(/\.md$/, "");
+
+      await metadataIndexer.indexDocument(docId, metadata);
+
+      log.info(`Indexed: ${docId}`);
+    } catch (err) {
+      log.error(`Failed to index ${filePath}`, err);
+    }
+  }
+}
 // ─── Start servers ─────────────────────────────
 async function main() {
+
+  log.info("Filling db")
+  await updateMetadata()
+  
   const port = Deno.env.get("PORT");
   const ws_port = Deno.env.get("WS_PORT");
-  log.warn("port is: ", port)
+  log.info("http port is:", port, "WS port is:", ws_port)
   
   serveYjs({
     port: ws_port,
@@ -204,6 +280,8 @@ async function main() {
   });
   log.info(`Starting Deno Oak server on port ${port}`);
   await app.listen({ port });
+
+  
 }
 
 main();
