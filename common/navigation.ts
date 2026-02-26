@@ -1,7 +1,9 @@
-import { YjsEditor } from "./editor";
+import { YjsEditor } from "./editor.ts";
 import { Logger } from "./logger.ts";
 import { getLS, Note, setLS } from "./helpers.ts";
 import { MetadataExtractor } from "./metadata.ts";
+import { Sidebar } from "./sidebar.ts";
+import { getApp } from "./app.ts";
 
 const log = new Logger({ namespace: "Navigation" });
 
@@ -19,7 +21,7 @@ export class Navigation {
 
   navdiv = document.querySelector("nav") as HTMLElement;
   sidediv = document.querySelector("#sidebar") as HTMLElement;
-
+  sidebar = new Sidebar(this.sidediv);
   // ────────────── Wiring ──────────────
 
   setEditor(editor: CMEditor) {
@@ -74,8 +76,8 @@ export class Navigation {
       item.className =
         node.type === "folder" ? "folder-item" : "file-item";
       item.textContent = node.name.endsWith(".md")
-        ? node.name.slice(0, -3)
-        : node.name;
+        ? decodeURI(node.name.slice(0, -3))
+        : decodeURI(node.name);
 
       if (node.type === "file") {
         item.addEventListener("click", async () => {
@@ -146,7 +148,6 @@ export class Navigation {
       for (const note of this.flattenTree(tree)) {
         this.notesMap[note.path] = note;
       }
-      log.debug(this.notesMap)
       setLS("all_notes", Object.keys(this.notesMap))
       
       this.populateNavigation();
@@ -164,21 +165,22 @@ export class Navigation {
     this.setTabInPath(clean);
 
     // Open the document via DocumentManager
-    log.debug(clean)
-    const doc = await window.documentManager.open(clean, { online: true });
+    const {documentManager, metadataIndexer} = getApp()
+    const doc = await documentManager.open(clean, { online: true });
     
     // parse metadata //TODO: make that cache
-    let metadata = MetadataExtractor.extractMetadata(doc.text);
-    log.debug(metadata)
+
+    metadataIndexer.indexDocument(clean, await MetadataExtractor.extractMetadata(doc.text))
     // Use the editor method to switch document cleanly
     this.editor.switchDocument(doc);
     
-
+    this.sidebar.load(docId)
     this.editor.focus();
   }
   async getFile(docId: string): Promise<string> {
     // Ensure the document is opened in the document manager
-    const doc = await window.documentManager.open(docId, { online: true });
+    const {documentManager} = getApp()
+    const doc = await documentManager.open(docId, { online: true });
     return doc.ytext.toString();
   }
   async loadLastTab() {
