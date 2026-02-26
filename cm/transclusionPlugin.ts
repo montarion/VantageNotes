@@ -10,6 +10,7 @@ import { StateField, RangeSetBuilder } from "npm:@codemirror/state";
 import { Navigation } from "../common/navigation.ts";
 import { Logger } from "../common/logger.ts";
 import { createReadOnlyEditor } from "../common/editor.ts";
+import { getApp } from "../common/app.ts";
 
 const log = new Logger({ namespace: "TransclusionPlugin" });
 
@@ -29,7 +30,7 @@ export class TransclusionWidget extends WidgetType {
   folded: boolean;
   editor?: EditorView;
 
-  constructor(spec: TransclusionSpec & { nav: Navigation }) {
+  constructor(spec: TransclusionSpec) {
     super();
     this.filename = spec.filename;
     this.header = spec.header;
@@ -72,7 +73,8 @@ export class TransclusionWidget extends WidgetType {
     // Load content asynchronously via Navigation
     (async () => {
       try {
-        const content = await window.nav.getFile(this.filename);
+        let {navigation} = getApp()
+        const content = await navigation.getFile(this.filename);
         const shown = this.header
           ? extractHeaderSection(content, this.header)
           : content;
@@ -234,10 +236,11 @@ function buildTransclusions(state): DecorationSet {
 
 // ────────────── Exported Field Factory ──────────────
 export function createTransclusionField() {
+  let {navigation} = getApp()
   return StateField.define<DecorationSet>({
-    create(state) { return buildTransclusions(state, window.nav); },
+    create(state) { return buildTransclusions(state, navigation); },
     update(deco, tr) {
-      if (tr.docChanged) return buildTransclusions(tr.state, window.nav);
+      if (tr.docChanged) return buildTransclusions(tr.state, navigation);
       return deco.map(tr.changes);
     },
     provide: f => EditorView.decorations.from(f),

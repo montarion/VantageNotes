@@ -1,3 +1,4 @@
+import { getApp } from "../common/app.ts";
 import { getLS } from "../common/helpers.ts";
 import { conditionalCompletion } from "./autocompleteFactory.ts";
 
@@ -25,17 +26,39 @@ export const wikiLinkCompletion = (context: CompletionContext) => {
     })),
   };
 };
-//export const wikiLinkCompletion = conditionalCompletion(
-//  {
-//    match: /\[\[\w*$/,
-//    replaceFrom: (m) => m.from + 2,
-//  },
-//  async () => {
-//    const notes = getLS("all_notes"); // your index
-//    console.log(notes)
-//    return notes.map(n => ({
-//      label: n.title,
-//      type: "file",
-//    }));
-//  }
-//  );
+
+export async function atNoteCompletion(context: CompletionContext) {
+  const word = context.matchBefore(/@[\w/-]*/);
+
+  if (!word) return null;
+
+  // If not explicitly invoked and no @, don't show
+  if (word.from === word.to && !context.explicit) return null;
+
+  const query = word.text.slice(1).toLowerCase(); // remove @
+  const { db } = getApp();
+  const notes = await db.query(
+    `SELECT document_id
+     FROM frontmatter
+     WHERE key = ?
+       AND value = ?`,
+    ["type", JSON.stringify("people")]
+  );
+  console.warn(notes)
+  const options = notes
+    .filter(note =>
+      note.id.toLowerCase().includes(query) ||
+      note.title.toLowerCase().includes(query)
+    )
+    .map(note => ({
+      label: note.title,
+      type: "text",
+      info: note.id,
+      apply: `@${note.id}`, // what gets inserted
+    }));
+
+  return {
+    from: word.from,
+    options,
+  };
+}
