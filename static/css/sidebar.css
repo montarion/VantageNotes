@@ -4,26 +4,3 @@
     color: white;
 }
 
-.vn-sidebar-card{
-    background-color: grey;
-    border: 1px solid gray;
-    border-radius: 4px;
-    padding: 2px;
-    margin: 5px;
-    /*height: 64px;*/
-    display: flex;
-    flex-direction: column;
-}
-
-.vn-card-body{
-
-}
-
-.vn-sidebar-card-body.link-preview{
-    display: flex;
-    flex-direction: row;
-}
-
-.vn-sidebar-card-body.link-preview > .vn-sidebar-card-row.image{
-    order: 1;
-}
