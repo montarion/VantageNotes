@@ -1,13 +1,12 @@
 // metadata.ts
 
-import YAML from "npm:yaml";
+//import { getApp } from "./app.ts";
+import { FrontmatterResult, parseFrontmatter, rebucketEntitiesByType } from "./helpers.ts";
+import { Logger } from "./logger.ts";
 
-export interface FrontmatterResult {
-  raw: any | null;
-  normalized?: any;
-  range?: { start: number; end: number };
-  error?: string;
-}
+const log = new Logger({ namespace: "Metadata.ts" });
+
+
 
 export interface Metadata {
   frontmatter: FrontmatterResult | null;
@@ -21,54 +20,11 @@ export interface Metadata {
 
 export class MetadataExtractor {
   /* ────────────────────────────── */
-  /* Frontmatter parsing            */
-  /* ────────────────────────────── */
-  static parseFrontmatter(text: string): FrontmatterResult | null {
-    if (!text.startsWith("---")) return null;
-
-    const end = text.indexOf("\n---", 3);
-    if (end === -1) {
-      return {
-        raw: null,
-        error: "Unterminated frontmatter",
-        range: { start: 0, end: 3 },
-      };
-    }
-
-    const fmStart = 3;
-    const fmEnd = end;
-    const rawBlock = text.slice(fmStart, fmEnd).trim();
-
-    try {
-      const raw = YAML.parse(rawBlock);
-
-      const normalized: any = { ...raw };
-
-      // simple normalization hooks
-      if (typeof normalized.date === "string") {
-        const d = new Date(normalized.date);
-        if (!isNaN(d.getTime())) normalized.date = d.toISOString();
-      }
-
-      return {
-        raw,
-        normalized,
-        range: { start: 0, end: end + 4 }, // include closing ---\n
-      };
-    } catch (err: any) {
-      return {
-        raw: null,
-        error: err.message,
-        range: { start: 0, end: end + 4 },
-      };
-    }
-  }
-
-  /* ────────────────────────────── */
   /* Metadata extraction            */
   /* ────────────────────────────── */
-  static extractMetadata(text: string): Metadata {
-    const frontmatter = this.parseFrontmatter(text);
+  static async extractMetadata(text: string): Promise<Metadata> {
+    //const { documentManager } = getApp();
+    const frontmatter = parseFrontmatter(text);
 
     const bodyStart = frontmatter?.range?.end ?? 0;
     const body = text.slice(bodyStart);
@@ -80,24 +36,24 @@ export class MetadataExtractor {
     const flags: Record<string, boolean> = { draft: false, archived: false, pinned: false };
 
     /* ───── Entities (@thing|alias) ───── */
-    const entityRe = /(?<!\S)@([^|\s]+)(?:\|([^\s]+))?/g;
+    const entityRe = /(?<!\S)@(?:\[\[([^|\]]+)(?:\|([^\]]+))?\]\]|([^|\s]+)(?:\|([^\s]+))?)/g;
     for (const m of body.matchAll(entityRe)) {
-      const id = m[1];
-      const alias = m[2];
-      const bucket = "unknown";
-
-      const entry = entities[bucket][id] ?? {
+      const id = m[1] ?? m[3];
+      const alias = m[2] ?? m[4];
+    
+      const entry = entities.unknown[id] ?? {
         mentions: 0,
         aliases: new Set<string>(),
         positions: [],
       };
-
+    
       entry.mentions++;
       if (alias) entry.aliases.add(alias);
       entry.positions.push(bodyStart + (m.index ?? 0));
-
-      entities[bucket][id] = entry;
+    
+      entities.unknown[id] = entry;
     }
+    //let newentities = await rebucketEntitiesByType(entities, documentManager.getText)
 
     // normalize alias sets
     for (const bucket of Object.values(entities)) {
@@ -167,10 +123,10 @@ export class MetadataExtractor {
     structure.hasAdmonitions = Array.from(body.matchAll(/^!!!\s+(\w+)/gm)).map(m => m[1]);
 
     /* ───── Flags from frontmatter ───── */
-    if (frontmatter?.raw) {
+    if (frontmatter?.attributes) {
       for (const k of Object.keys(flags)) {
-        if (typeof frontmatter.raw[k] === "boolean") {
-          flags[k] = frontmatter.raw[k];
+        if (typeof frontmatter.attributes[k] === "boolean") {
+          flags[k] = frontmatter.attributes[k];
         }
       }
     }

@@ -2,11 +2,15 @@
 import * as Y from "npm:yjs";
 import { WebsocketProvider } from "npm:y-websocket";
 import { IndexeddbPersistence } from "npm:y-indexeddb";
-import { Logger } from '../common/logger.ts';
+import { Logger, Logging } from '../common/logger.ts';
+import { MetadataExtractor } from "./metadata.ts";
+import { createMetadataIndexer } from "./metadataindexer.ts";
+import { getApp } from "./app.ts";
 const log = new Logger({ namespace: 'DocumentManager', minLevel: 'debug' });
 
 type DocumentId = string;
-const WSURL = `wss://${location.host}/ws`;
+const WSURL = `wss://${window.location.host}/ws`;
+let timers = [];
 //const WSURL = `ws://${window.location.hostname}:11625/ws/`;
 
 export type ManagedDocument = {
@@ -23,7 +27,6 @@ export type DocumentManager = {
     id: DocumentId,
     options?: { initialContent?: string; online?: boolean }
   ): Promise<ManagedDocument>;
-
   connect(id: DocumentId): Promise<void>;
   disconnect(id: DocumentId): void;
   getText(id: DocumentId): string;
@@ -31,9 +34,12 @@ export type DocumentManager = {
   destroy(id: DocumentId): void;
 };
 
-export function createDocumentManager(): DocumentManager {
+export async function createDocumentManager(): Promise<DocumentManager> {
   const docs = new Map<DocumentId, ManagedDocument>();
   
+  
+  
+
   async function open(
     docId: DocumentId,
     options?: { initialContent?: string; online?: boolean}
@@ -60,6 +66,9 @@ export function createDocumentManager(): DocumentManager {
         });
       }
     }
+    ytext.observe(() => {
+      scheduleMetadataReindex(docId);
+    });
     
     let provider = new WebsocketProvider(WSURL, docId, ydoc);
     provider.awareness.setLocalStateField("user", {
@@ -95,10 +104,51 @@ export function createDocumentManager(): DocumentManager {
     doc.provider = undefined;
   }
 
-  function getText(id: DocumentId): string {
-    const doc = docs.get(id);
-    if (!doc) throw new Error(`Document ${id} not opened`);
-    return doc.ytext.toString();
+  async function getText(id: DocumentId): Promise<string> {
+    let doc = docs.get(id);
+  
+    // Already open → just return text
+    if (doc) {
+      return doc.ytext.toString();
+    }
+  
+    // Not in cache → hydrate from server (offline-only, no websocket)
+    const res = await fetch(`/notes/${id}`);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch document ${id}`);
+    }
+  
+    const content = await res.text();
+  
+    const ydoc = new Y.Doc();
+    const ytext = ydoc.getText(id);
+  
+    const indexeddb = new IndexeddbPersistence(`note:${id}`, ydoc);
+    await indexeddb.whenSynced;
+  
+    // Only insert if empty (avoid overwriting persisted state)
+    if (ytext.length === 0 && content) {
+      ydoc.transact(() => {
+        ytext.insert(0, content);
+      });
+    }
+  
+    ytext.observe(() => {
+      scheduleMetadataReindex(id);
+    });
+  
+    doc = {
+      id,
+      ydoc,
+      ytext,
+      text: ytext.toString(),
+      indexeddb,
+      provider: undefined, // explicitly no websocket
+    };
+  
+    docs.set(id, doc);
+  
+    return ytext.toString();
   }
 
   function setText(id: DocumentId, text: string) {
@@ -118,6 +168,19 @@ export function createDocumentManager(): DocumentManager {
     doc.indexeddb.destroy();
     doc.ydoc.destroy();
     docs.delete(id);
+  }
+
+  function scheduleMetadataReindex(docId: string) {
+    clearTimeout(timers[docId]);
+    timers[docId] = setTimeout(async () => {
+      log.debug(`Updating ${docId} metadata!\n text is:`)
+      const text = await getText(docId);
+      log.debug(text)
+      const metadata = await MetadataExtractor.extractMetadata(text);
+      console.debug(metadata)
+      const {metadataIndexer} = getApp()
+      metadataIndexer.indexDocument(docId, metadata);
+    }, 400);
   }
 
   return {

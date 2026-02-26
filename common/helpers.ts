@@ -1,6 +1,9 @@
 import { HighlightStyle, tags } from "npm:@codemirror/highlight";
+import fm from "npm:front-matter"
+
 
 import { Logger } from './logger.ts';
+import { getApp } from "./app.ts";
 const log = new Logger({ namespace: 'helper', minLevel: 'debug' });
 
 export function setLS(key: string, value: any) {
@@ -121,49 +124,80 @@ export type Note = {
     };
   }
 
-  /*
-  export const blockHighlightStyle = HighlightStyle.define([
-    // Keywords
-    { tag: tags.keyword, class: "cm-keyword" },
-    { tag: tags.controlKeyword, class: "cm-keyword" },
-    { tag: tags.operatorKeyword, class: "cm-keyword" },
+  type EntityEntry = {
+    mentions: number;
+    aliases: Set<string>;
+    positions: number[];
+  };
   
-    // Names
-    { tag: tags.variableName, class: "cm-variable" },
-    { tag: tags.typeName, class: "cm-type" },
-    { tag: tags.className, class: "cm-class" },
-    { tag: tags.namespace, class: "cm-namespace" },
+  type Entities = { people: {}, places: {}, organizations: {}, unknown: {} };
   
-    // Literals
-    { tag: tags.string, class: "cm-string" },
-    { tag: tags.string.special, class: "cm-string-special" },
-    { tag: tags.number, class: "cm-number" },
-    { tag: tags.bool, class: "cm-bool" },
-    { tag: tags.null, class: "cm-null" },
+  /**
+   * Re-buckets unknown entities based on frontmatter.type
+   *
+   * @param entities Existing entities object
+   * @param getFileText Async function that returns markdown file contents for an entity id
+   */
+  export async function rebucketEntitiesByType(
+    entities: Entities,
+    getFileText: (id: string) => Promise<string | null>
+  ): Promise<Entities> {
+    const result: Entities = {};
   
-    // Comments
-    { tag: tags.comment, class: "cm-comment" },
-    { tag: tags.comment.line, class: "cm-comment" },
-    { tag: tags.comment.block, class: "cm-comment" },
+    // Preserve existing non-unknown buckets as-is
+    for (const [bucket, bucketEntities] of Object.entries(entities)) {
+      if (bucket !== "unknown") {
+        result[bucket] = { ...bucketEntities };
+      }
+    }
   
-    // Operators & punctuation
-    { tag: tags.operator, class: "cm-operator" },
-    { tag: tags.punctuation, class: "cm-punctuation" },
-    { tag: tags.bracket, class: "cm-bracket" },
+    const unknown = entities.unknown ?? {};
   
-    // Properties & attributes
-    { tag: tags.propertyName, class: "cm-property" },
-    { tag: tags.attributeName, class: "cm-attribute" },
+    for (const [id, entry] of Object.entries(unknown)) {
+      let bucket = "unknown";
+      try {
+        const fileText = await getFileText(id);
   
-    // Special syntax
-    { tag: tags.escape, class: "cm-escape" },
-    { tag: tags.regexp, class: "cm-regexp" },
+        if (fileText) {
+          //const parsed = extractYaml(fileText);
+          //const frontmatterType = parsed.attrs.type;
+          const parsed = fm(fileText);
+          const frontmatterType = parsed.attributes.type;
+          if (frontmatterType && typeof frontmatterType === "string") {
+            bucket = frontmatterType;
+          } else {
+            // Fallback to folder name (people/John Doe → people)
+            const folderFallback = id.split("/")[0];
+            if (folderFallback) bucket = folderFallback;
+          }
+        }
+      } catch (error){
+        log.error(error)
+        // swallow errors, keep as unknown
+      }
   
-    // Markdown / meta
-    { tag: tags.heading, class: "cm-heading" },
-    { tag: tags.strong, class: "cm-strong" },
-    { tag: tags.emphasis, class: "cm-emphasis" },
-    { tag: tags.link, class: "cm-link" },
-    { tag: tags.url, class: "cm-url" },
-  ]);
-  */
+      if (!result[bucket]) result[bucket] = {};
+      result[bucket][id] = entry;
+    }
+    return result;
+  }
+
+  export interface FrontmatterResult<T = Record<string, unknown>> {
+    attributes: T;
+    
+    bodyBegin: number;
+  }
+
+  /* ────────────────────────────── */
+  /* Frontmatter parsing            */
+  /* ────────────────────────────── */
+  export function parseFrontmatter(text: string): FrontmatterResult | null {
+    if (!String(text).startsWith("---")) return null;
+    let frontmatter = fm(text)
+    delete frontmatter.body
+    frontmatter.raw = frontmatter.frontmatter
+    delete frontmatter.frontmatter
+    return frontmatter
+  }
+
+
