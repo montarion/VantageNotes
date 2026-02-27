@@ -44,6 +44,12 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
         position INTEGER,
         UNIQUE(document_id, entity_id, alias, position)
       );
+      CREATE TABLE IF NOT EXISTS tags (
+        document_id TEXT NOT NULL,
+        tag_id TEXT NOT NULL,
+        count INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (document_id, tag_id)
+      );
 
       CREATE TABLE IF NOT EXISTS semantics (
         document_id TEXT,
@@ -94,7 +100,8 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
         ["wikilinks", "source_doc"],
         ["transclusions", "source_doc"],
         ["external_links", "source_doc"],
-        ["headers", "document_id"]
+        ["headers", "document_id"],
+        ["tags", "document_id"]
       ];
 
       for (const [table, col] of tables) {
@@ -115,7 +122,8 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
           ["wikilinks", "source_doc"],
           ["transclusions", "source_doc"],
           ["external_links", "source_doc"],
-          ["headers", "document_id"]
+          ["headers", "document_id"],
+          ["tags", "document_id"]
         ];
 
         for (const [table, col] of tables) {
@@ -224,6 +232,21 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
           await tx.run(
             "INSERT INTO headers (document_id, level, text, position) VALUES (?, ?, ?, ?)",
             [docId, h.level, h.text, h.position]
+          );
+        }
+
+        /* -------------------------
+          tags
+        ------------------------- */
+        for (const [tag, count] of Object.entries(metadata.tags)) {
+          await tx.run(
+            `
+              INSERT INTO tags (document_id, tag_id, count)
+              VALUES (?, ?, ?)
+              ON CONFLICT(document_id, tag_id) 
+              DO UPDATE SET count = excluded.count
+            `,
+            [docId, tag, count]
           );
         }
       });

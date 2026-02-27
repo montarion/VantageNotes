@@ -5,6 +5,7 @@ import { MetadataExtractor } from "../common/metadata.ts";
 import { MetadataIndexer, createMetadataIndexer } from "../common/metadataindexer.ts";
 import { createServerDB } from "../common/server-db.ts";
 import { Logger } from "../common/logger.ts";
+import { addToIndex, searchindex } from "../search.ts";
 const log = new Logger({ namespace: "yjs.persistence" });
 
 export abstract class Persistence {
@@ -26,7 +27,7 @@ export abstract class Persistence {
     await this.debounceAfterStoreUpdate(docName, update);
   }
   private debounceTimers = new Map<string, number>();
-  private debounceDelay = 600; // ms
+  private debounceDelay = 2000; // ms
   private debounceAfterStoreUpdate(
       docName: string,
       update: Uint8Array
@@ -83,6 +84,7 @@ export abstract class Persistence {
     //// get metadata for text
     let metadata = await MetadataExtractor.extractMetadata(text)
     this.metadataindexer.indexDocument(docName, metadata)
+    addToIndex(searchindex, docName, text, metadata)
     log.warn("UPDATED METADATA ON SERVER")
 
     

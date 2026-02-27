@@ -15,6 +15,7 @@ export interface Metadata {
   links: Record<string, any>;
   structure: Record<string, any>;
   flags: Record<string, boolean>;
+  tags: String[];
   stats: Record<string, number>;
 }
 
@@ -131,17 +132,32 @@ export class MetadataExtractor {
       }
     }
 
+    /* ───── Tags (#tag) ───── */
+    const tags: Record<string, number> = {};
+    const tagRe = /#([a-zA-Z0-9_-]+)/g;
+    for (const m of body.matchAll(tagRe)) {
+      const tag = m[1];
+      if (!tags[tag]) {
+        tags[tag] = 1;
+      } else {
+        tags[tag]++;
+      }
+    }
+
     /* ───── Stats ───── */
     const stats = {
       wordCount: body.trim() ? body.trim().split(/\s+/).length : 0,
       charCount: body.length,
       entityCount: Object.values(entities.unknown).length,
       semanticCount: Object.keys(semantics).length,
+      tagCount: tags.length,
       linkCount:
         Object.keys(links.wikilinks).length +
         Object.keys(links.transclusions).length +
         Object.keys(links.external).length,
     };
+
+    
 
     return {
       frontmatter,
@@ -150,7 +166,8 @@ export class MetadataExtractor {
       links,
       structure,
       flags,
-      stats,
+      tags,
+      stats
     };
   }
 }
