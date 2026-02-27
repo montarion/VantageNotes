@@ -9,6 +9,7 @@ import "https://deno.land/std@0.224.0/dotenv/load.ts"; // for env access
 import { createMetadataIndexer } from "./common/metadataindexer.ts";
 import { readdir, readFile } from "node:fs/promises";
 import { createServerDB } from "./common/server-db.ts";
+import { addToIndex, searchindex } from "./search.ts";
 
 const log = new Logger("main");
 const NOTES_DIR = resolve("static/notes");
@@ -97,7 +98,46 @@ router.get("/api/metadata/:filename?", async (ctx) => {
     ctx.response.body = allMeta;
   }
 });
+// search
 
+router.get("/api/search", async (ctx) => {
+  try {
+    const query = ctx.request.url.searchParams.get("q")?.trim();
+
+    if (!query) {
+      ctx.response.status = 400;
+      ctx.response.body = { error: "Missing query parameter 'q'" };
+      return;
+    }
+
+    // Perform search using FlexSearch
+    // Replace 'index' with your actual FlexSearch.Document instance
+    const results = await searchindex.search(query, { field: ["text", "title", "tags", "entities", "wikilinks"], limit: 20 });
+    log.debug("tryuing to read")
+    log.debug(results)
+    log.debug("abovce")
+    // FlexSearch.Document search returns array of { result: [docIds] } per field
+    // Flatten results and remove duplicates
+    const docIds = new Set<string>();
+    for (const fieldResult of results) {
+      if (Array.isArray(fieldResult.result)) {
+        fieldResult.result.forEach(id => docIds.add(id));
+      } else if (Array.isArray(fieldResult)) {
+        fieldResult.forEach(id => docIds.add(id));
+      }
+    }
+
+    ctx.response.status = 200;
+    ctx.response.body = {
+      query,
+      results: Array.from(docIds),
+    };
+  } catch (err) {
+    console.error("Search error:", err);
+    ctx.response.status = 500;
+    ctx.response.body = { error: "Internal server error" };
+  }
+});
 // note read/write
 router.get("/notes/:filename+", async (ctx) => {
   const filePath = join(NOTES_DIR, ctx.params.filename+".md");
@@ -120,6 +160,8 @@ router.post("/notes/:filename+", async (ctx) => {
   ctx.response.status = 201;
   ctx.response.body = { message: `File ${ctx.params.filename} saved` };
 });
+
+
 
 // catch-all for frontend
 //router.get("/:path*", async (ctx) => {
@@ -241,14 +283,18 @@ async function updateMetadata(){
   await metadataIndexer.init();
 
   const files = await walk("static/notes");
-
+  
+  
+  
+  
+  
   for (const filePath of files) {
     try {
       const text = await readFile(filePath, "utf8");
 
       const metadata = await MetadataExtractor.extractMetadata(text);
       log.debug(`metadata for file ${filePath}`)
-      //log.debug(metadata)
+      
 
       // Use relative path without extension as docId
       const docId = filePath
@@ -256,12 +302,13 @@ async function updateMetadata(){
         .replace(/\.md$/, "");
 
       await metadataIndexer.indexDocument(docId, metadata);
-
-      log.info(`Indexed: ${docId}`);
+      // add to searchindex
+      addToIndex(searchindex, docId, text, metadata)
     } catch (err) {
       log.error(`Failed to index ${filePath}`, err);
     }
   }
+  console.log("###############DONE#################")
 }
 // ─── Start servers ─────────────────────────────
 async function main() {
