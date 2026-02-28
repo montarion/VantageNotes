@@ -7,6 +7,7 @@ import { Logger } from "./logger.ts";
 import { MetadataExtractor } from "./metadata.ts";
 import { MetadataIndexer, createMetadataIndexer } from "./metadataindexer.ts";
 import { Navigation } from "./navigation.ts";
+import { Search } from "./search.ts";
 const log = new Logger({ namespace: "Appcontext" });
 
 export interface AppContext {
@@ -14,6 +15,7 @@ export interface AppContext {
   navigation: Navigation;
   db: DBInterface;
   metadataIndexer: MetadataIndexer;
+  search: Search;
   
 }
 
@@ -36,8 +38,9 @@ export async function createApp(): Promise<AppContext> {
     const navigation = new Navigation();
     const metadataIndexer = createMetadataIndexer(db);
     await metadataIndexer.init()
-    const metaextractor = new MetadataExtractor()
-    const metadataExtractor = await metaextractor.extractMetadata
-  
-  return { documentManager, navigation, db, metadataIndexer, metadataExtractor};
+    const search = new Search({
+      mode: "remote",
+    });
+    
+  return { documentManager, navigation, db, metadataIndexer, search};
 }
