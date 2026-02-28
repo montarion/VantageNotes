@@ -34,6 +34,7 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
       CREATE TABLE IF NOT EXISTS frontmatter (
         document_id TEXT,
         key TEXT,
+        updated_at INTEGER,
         value TEXT
       );
 
@@ -42,12 +43,28 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
         entity_id TEXT,
         alias TEXT,
         position INTEGER,
+        updated_at INTEGER,
         UNIQUE(document_id, entity_id, alias, position)
       );
+
+      CREATE TABLE IF NOT EXISTS tasks (
+        document_id TEXT NOT NULL,
+        task_content TEXT NOT NULL,
+        task_complete BOOL NOT NULL,
+        due_date INTEGER,
+        priority INTEGER,
+        line_number INTEGER,
+        position INTEGER,
+        entities TEXT,
+        updated_at INTEGER,
+        UNIQUE(document_id, line_number)
+      );
+
       CREATE TABLE IF NOT EXISTS tags (
         document_id TEXT NOT NULL,
         tag_id TEXT NOT NULL,
         count INTEGER NOT NULL DEFAULT 1,
+        updated_at INTEGER,
         PRIMARY KEY (document_id, tag_id)
       );
 
@@ -55,6 +72,7 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
         document_id TEXT,
         path TEXT,
         position INTEGER,
+        updated_at INTEGER,
         UNIQUE(document_id, path, position)
       );
 
@@ -63,6 +81,7 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
         target TEXT,
         alias TEXT,
         position INTEGER,
+        updated_at INTEGER,
         UNIQUE(source_doc, target, alias, position)
       );
 
@@ -70,6 +89,7 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
         source_doc TEXT,
         target TEXT,
         position INTEGER,
+        updated_at INTEGER,
         UNIQUE(source_doc, target, position)
       );
 
@@ -77,6 +97,7 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
         source_doc TEXT,
         url TEXT,
         position INTEGER,
+        updated_at INTEGER,
         UNIQUE(source_doc, url, position)
       );
 
@@ -85,7 +106,16 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
         level INTEGER,
         text TEXT,
         position INTEGER,
+        updated_at INTEGER,
         UNIQUE(document_id, level, text, position)
+      );
+
+      CREATE TABLE changes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        table_name TEXT NOT NULL,
+        row_id TEXT NOT NULL,
+        action TEXT NOT NULL, -- insert | update | delete
+        updated_at INTEGER NOT NULL
       );
     `);
   }
@@ -123,7 +153,8 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
           ["transclusions", "source_doc"],
           ["external_links", "source_doc"],
           ["headers", "document_id"],
-          ["tags", "document_id"]
+          ["tags", "document_id"],
+          ["tasks", "document_id"]
         ];
 
         for (const [table, col] of tables) {
@@ -249,6 +280,46 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
             [docId, tag, count]
           );
         }
+
+        /* -------------------------
+          Tasks
+        ------------------------- */
+        for (const task of metadata.tasks) {
+          await tx.run(
+            `
+              INSERT INTO tasks (
+                document_id,
+                task_content,
+                task_complete,
+                due_date,
+                priority,
+                line_number,
+                position,
+                entities
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT(document_id, line_number)
+              DO UPDATE SET
+                task_content = excluded.task_content,
+                task_complete = excluded.task_complete,
+                due_date = excluded.due_date,
+                priority = excluded.priority,
+                position = excluded.position,
+                entities = excluded.entities
+            `,
+            [
+              docId,
+              task.task_content,
+              task.task_complete ? 1 : 0,
+              task.due_date,
+              task.priority,
+              task.line_number,
+              task.position,
+              JSON.stringify(task.entities ?? [])
+            ]
+          );
+        }
+        
       });
     }catch(err){
       console.error(err)
