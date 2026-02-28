@@ -1,0 +1,47 @@
+/* ---------- SEARCH RESULTS ---------- */
+
+.searchgroup {
+    margin-bottom: 6px;
+    padding: 4px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.02);
+    backdrop-filter: blur(6px);
+    animation: fadeInSearch 0.15s ease;
+  }
+  
+  @keyframes fadeInSearch {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .search-item {
+    position: relative;
+  }
+  
+  /* subtle separator */
+  .search-item:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 0;
+    height: 1px;
+    background: rgba(255,255,255,0.04);
+  }
+  
+  /* reuse active styling */
+  .search-item.active > .item-row {
+    background: rgba(var(--cm-accent-color),0.05);
+    color: rgba(var(--cm-accent-color),1);
+  }
+  
+  /* hover same as tree */
+  .search-item .item-row:hover {
+    background: rgba(255,255,255,0.06);
+  }
