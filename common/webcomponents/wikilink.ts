@@ -20,25 +20,7 @@ class VNWikilink extends VNComponent {
 
     this.root.innerHTML = `
       <style>
-        .card {
-          display: flex;
-          flex-direction: row;
-          align-items: center;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          padding: 6px 10px;
-          height: 64px;
-          overflow: hidden;
-          margin-bottom: 12px;
-          font-family: sans-serif;
-          cursor: pointer;
-          transition: background 0.15s ease;
-        }
-
-        .card:hover {
-          background: #f5f5f5;
-        }
-
+      ${this.getBaseStyles()}
         .panel {
           display: flex;
           flex-direction: column;
@@ -54,13 +36,7 @@ class VNWikilink extends VNComponent {
           text-overflow: ellipsis;
         }
 
-        .path {
-          font-size: 11px;
-          color: #888;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
+        
 
         .meta {
           display: flex;
@@ -70,15 +46,15 @@ class VNWikilink extends VNComponent {
         }
 
         .badge {
-          background: #222;
-          color: white;
+          background: var(--sidebar-badge-bg);
+          color: var(--sidebar-badge-color);
           padding: 2px 6px;
           border-radius: 12px;
           font-size: 11px;
         }
 
         .tag {
-          background: #e5e7eb;
+          background: var(--sidebar-tag-bg);
           padding: 2px 6px;
           border-radius: 6px;
           font-size: 11px;
@@ -88,7 +64,7 @@ class VNWikilink extends VNComponent {
       <div class="card">
         <div class="panel">
           <div class="title">${displayName}</div>
-          <div class="path">${title}</div>
+          <div class="description">${title}</div>
 
           <div class="meta">
             <span class="badge">${mentions}</span>

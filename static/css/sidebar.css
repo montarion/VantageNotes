@@ -1,6 +1,14 @@
-.sidebar{
+.sidebar {
+    --sidebar-bg: transparent;
+    --sidebar-border: rgba(255,255,255,0.08);
+    --sidebar-hover: rgba(255,255,255,0.06);
+    --sidebar-muted: rgba(255,255,255,0.5);
+    --sidebar-tag-bg: rgba(255,255,255,0.08);
+    --sidebar-badge-bg: rgba(var(--cm-accent-color),0.15);
+    --sidebar-badge-color: rgba(var(--cm-accent-color),1);
     flex-grow: 1;
-    max-width: 500px;
+    max-width: 400px;
     color: white;
-}
+  }
+
 

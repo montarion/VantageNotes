@@ -8,22 +8,17 @@ class VNExternalLink extends VNComponent {
 
     this.root.innerHTML = `
       <style>
-        .card {
-          display:flex;
-          flex-direction:row;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          padding: 6px;
-          height: 64px;
-          overflow-y:hidden;
-          margin-bottom: 12px;
-          font-family: sans-serif;
-        }
+        ${this.getBaseStyles()}
         .panel{
           display: flex;
           flex-direction: column
         }
-
+        h4 {
+          margin-block: 0.5em;
+        }
+        p {
+          margin-block: 0;
+        }
         img {
           max-width:100%;
           max-height:100%;
@@ -49,7 +44,7 @@ class VNExternalLink extends VNComponent {
         }
         <div class=panel>
           <h4>${title}</h4>
-          <p>${properties.description ?? ""}</p>
+          <span class=description>${properties.description ?? ""}</span>
           
           
         </div>

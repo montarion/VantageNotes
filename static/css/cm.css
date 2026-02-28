@@ -1,5 +1,6 @@
 :root{
-  --cm-accent-color: rgb(56, 189, 248);
+  --cm-accent-color: 152, 4, 238;
+  --cm-accent-color-muted: 152, 4, 238;
   --cm-link-color: #c678dd;
   --cm-text-color: white;
   --red: red;
@@ -335,7 +336,7 @@
 
 /* cm tooltip/autocomplete */
 .cm-tooltip{
-  border: 0px solid var(--cm-accent-color);
+  border: 0px solid rgb(var(--cm-accent-color));
   border-radius: 5px;
 }
 

@@ -4,15 +4,12 @@ import { VNComponent } from "./base.ts";
 class VNEntity extends VNComponent {
   protected render() {
     const { title, properties } = this._data;
+    console.warn(this._data)
 
     this.root.innerHTML = `
       <style>
-        .card {
-          border: 1px solid #eee;
-          border-radius: 8px;
-          padding: 10px;
-          margin-bottom: 10px;
-        }
+      ${this.getBaseStyles()}
+        
 
         .badge {
           background: #222;

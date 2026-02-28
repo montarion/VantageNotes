@@ -1,6 +1,118 @@
-.navigation div{
+.navigation{
     color: white;
-    border: 1px solid grey;
+    border: 0px solid grey;
     border-radius: 6px;
     padding: 2px;
 }
+.file-tree {
+    list-style: none;
+    padding: 6px;
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+  }
+  
+  /* Remove default list styles */
+  .file-tree ul {
+    list-style: none;
+    margin: 0;
+    padding-left: 20px;
+    position: relative;
+  }
+  
+  /* Tree vertical line */
+  .file-tree ul::before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(255,255,255,0.08);
+  }
+  
+  /* Horizontal connector line */
+  .file-tree li {
+    position: relative;
+    user-select: none;
+  }
+  
+  .file-tree li::before {
+    content: "";
+    position: absolute;
+    left: -12px;
+    top: 14px;
+    width: 12px;
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+  }
+
+  .file-tree ul::before,
+  .file-tree li::before {
+    background: rgba(255,255,255,0.08);
+    transition: background 0.4s ease;
+  }
+
+  .folder.active-branch > ul::before {
+    background: rgba(var(--cm-accent-color),1);
+  }
+  
+  .folder.active-branch::before {
+    background: rgba(var(--cm-accent-color),1);
+  }
+
+  .file.active::before {
+    background: rgba(var(--cm-accent-color),1);
+  }
+
+  
+  
+  .item-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  
+  .item-row:hover {
+    background: rgba(255,255,255,0.06);
+  }
+  
+  /* Active file */
+  .file.active > .item-row {
+    background: rgba(var(--cm-accent-color),0.05);
+    color: rgba(var(--cm-accent-color),1);
+  }
+  
+  /* File icon */
+  .file .label::before {
+    content: "📄";
+    margin-right: 6px;
+    opacity: 0.8;
+  }
+  
+  /* Folder arrow */
+  .folder > .item-row .label::before {
+    content: "▸";
+    display: inline-block;
+    width: 14px;
+    transition: transform 0.15s ease;
+  }
+  
+  .folder.open > .item-row .label::before {
+    transform: rotate(90deg);
+  }
+  
+  /* Smooth open animation */
+  .folder > .children {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.25s ease;
+  }
+  
+  .folder.open > .children {
+    max-height: 1000px; /* large enough */
+  }
