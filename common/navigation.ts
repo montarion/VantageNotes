@@ -18,12 +18,14 @@ export class Navigation {
 
   notesTree: NoteNode[] = [];
   notesMap: Record<string, Note> = {};
+  activePath: string | null = null;
 
   navdiv = document.querySelector("nav") as HTMLElement;
   sidediv = document.querySelector("#sidebar") as HTMLElement;
   sidebar = new Sidebar(this.sidediv);
-  // ────────────── Wiring ──────────────
 
+  // ────────────── Wiring ──────────────
+  
   setEditor(editor: CMEditor) {
     this.editor = editor;
   }
@@ -64,47 +66,80 @@ export class Navigation {
   populateNavigation() {
     if (!this.navdiv) return;
     this.navdiv.innerHTML = "";
-
+  
+    const root = document.createElement("ul");
+    root.className = "file-tree";
+  
     const buildNode = (
       node: NoteNode,
       container: HTMLElement,
       parentPath = ""
     ) => {
       const fullPath = parentPath ? `${parentPath}/${node.name}` : node.name;
-
-      const item = document.createElement("div");
-      item.className =
-        node.type === "folder" ? "folder-item" : "file-item";
-      item.textContent = node.name.endsWith(".md")
+  
+      const li = document.createElement("li");
+      li.className = node.type === "folder" ? "folder" : "file";
+      li.dataset.path = fullPath;
+  
+      const row = document.createElement("div");
+      row.className = "item-row";
+  
+      const label = document.createElement("span");
+      label.className = "label";
+      label.textContent = node.name.endsWith(".md")
         ? decodeURI(node.name.slice(0, -3))
         : decodeURI(node.name);
-
+  
+      row.appendChild(label);
+      li.appendChild(row);
+  
       if (node.type === "file") {
-        item.addEventListener("click", async () => {
+        row.addEventListener("click", async (e) => {
+          e.stopPropagation();
+  
+          this.activePath = fullPath;
           await this.switchTab(fullPath);
+          this.populateNavigation(); // re-render to update active state
         });
+  
+        if (this.activePath === fullPath) {
+          li.classList.add("active");
+        
+          // mark all parents as active-branch
+          let parent = li.parentElement?.closest("li.folder");
+          while (parent) {
+            parent.classList.add("active-branch");
+            parent = parent.parentElement?.closest("li.folder");
+          }
+        }
       }
-
+  
       if (node.type === "folder" && node.children) {
-        const children = document.createElement("div");
-        children.className = "folder-children";
-        children.style.paddingLeft = "1rem";
-
+        const childrenUl = document.createElement("ul");
+        childrenUl.className = "children";
+  
         node.children.forEach(child =>
-          buildNode(child, children, fullPath)
+          buildNode(child, childrenUl, fullPath)
         );
-
-        item.appendChild(children);
-        item.addEventListener("click", () => {
-          children.style.display =
-            children.style.display === "none" ? "block" : "none";
+  
+        row.addEventListener("click", (e) => {
+          e.stopPropagation();
+          li.classList.toggle("open");
         });
+  
+        // auto-open if active file is inside
+        if (this.activePath?.startsWith(fullPath + "/")) {
+          li.classList.add("open");
+        }
+  
+        li.appendChild(childrenUl);
       }
-
-      container.appendChild(item);
+  
+      container.appendChild(li);
     };
-
-    this.notesTree.forEach(node => buildNode(node, this.navdiv));
+  
+    this.notesTree.forEach(node => buildNode(node, root));
+    this.navdiv.appendChild(root);
   }
 
   // ────────────── File list ──────────────
@@ -208,5 +243,53 @@ export class Navigation {
 
   private setTabInPath(filename: string) {
     history.pushState({}, "", "/" + filename);
+  }
+
+
+  // ----------- Display search results ------------
+  displaySearchResults(results: string[]) {
+    this.hideSearchResults();
+  
+    const searchgroup = document.createElement("div");
+    searchgroup.classList.add("searchgroup");
+    searchgroup.id = "searchgroup";
+  
+    results.forEach(res => {
+      const li = document.createElement("div");
+      li.classList.add("search-item", "file");
+  
+      const row = document.createElement("div");
+      row.classList.add("item-row");
+  
+      const label = document.createElement("span");
+      label.classList.add("label");
+      label.textContent = decodeURI(
+        res.endsWith(".md") ? res.slice(0, -3) : res
+      );
+  
+      row.appendChild(label);
+      li.appendChild(row);
+  
+      if (this.activePath === res) {
+        li.classList.add("active");
+      }
+  
+      row.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        this.hideSearchResults();
+        this.activePath = res;
+        await this.switchTab(res);
+        this.populateNavigation();
+      });
+  
+      searchgroup.appendChild(li);
+    });
+  
+    this.navdiv.prepend(searchgroup);
+  }
+
+  hideSearchResults(){
+    document.getElementById("searchgroup")?.remove()
+    log.debug("tried to remove searchgroup")
   }
 }
