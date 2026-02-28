@@ -110,7 +110,7 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
         UNIQUE(document_id, level, text, position)
       );
 
-      CREATE TABLE changes (
+      CREATE TABLE IF NOT EXISTS changes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         table_name TEXT NOT NULL,
         row_id TEXT NOT NULL,
