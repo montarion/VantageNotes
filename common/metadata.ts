@@ -6,7 +6,15 @@ import { Logger } from "./logger.ts";
 
 const log = new Logger({ namespace: "Metadata.ts" });
 
-
+export interface ExtractedTask {
+  task_content: string;
+  task_complete: boolean;
+  due_date: number | null;
+  priority: number | null;
+  line_number: number;
+  position: number;
+  entities: string[]
+}
 
 export interface Metadata {
   frontmatter: FrontmatterResult | null;
@@ -16,6 +24,7 @@ export interface Metadata {
   structure: Record<string, any>;
   flags: Record<string, boolean>;
   tags: String[];
+  tasks: ExtractedTask[];
   stats: Record<string, number>;
 }
 
@@ -144,13 +153,81 @@ export class MetadataExtractor {
       }
     }
 
+    /* ───── Tasks (- [ ] task) ───── */
+    const tasks: ExtractedTask[] = [];
+
+    const lines = text.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      const taskMatch = line.match(/^(\s*)- \[( |x|X)\] (.+)$/);
+      if (!taskMatch) continue;
+
+      const indent = taskMatch[1].length;
+      const complete = taskMatch[2].toLowerCase() === "x";
+      let content = taskMatch[3].trim();
+
+      // ---- Due Date Parsing ----
+      let due_date: number | null = null;
+      const dueMatch = content.match(/due:(\d{4}-\d{2}-\d{2})/);
+      if (dueMatch) {
+        const parsed = Date.parse(dueMatch[1]);
+        if (!isNaN(parsed)) {
+          due_date = parsed;
+        }
+        content = content.replace(dueMatch[0], "").trim();
+      }
+
+      // ---- Priority Parsing ----
+      let priority: number | null = null;
+
+      const pMatch = content.match(/(?:^|\s)!p([1-3])\b/i);
+
+      if (pMatch) {
+        priority = parseInt(pMatch[1], 10);
+
+        content = content
+          .replace(pMatch[0], "")
+          .replace(/\s{2,}/g, " ")
+          .trim();
+      }
+
+      // ---- Position ----
+      const absolutePosition = text.indexOf(line);
+
+      // ---- Extract @entities inside task ----
+      const taskEntities: string[] = [];
+
+      const taskEntityRe =
+        /(?<!\S)@(?:\[\[([^|\]]+)(?:\|[^\]]+)?\]\]|([^|\s]+))/g;
+
+      for (const m of content.matchAll(taskEntityRe)) {
+        const id = m[1] ?? m[2];
+        if (id) taskEntities.push(id);
+      }
+
+      // Remove entity syntax from display content if desired
+      content = content.replace(taskEntityRe, "").trim();
+
+      
+      tasks.push({
+        task_content: content,
+        task_complete: complete,
+        due_date,
+        priority,
+        line_number: i,
+        position: absolutePosition,
+        entities: taskEntities
+      });
+    }
     /* ───── Stats ───── */
     const stats = {
       wordCount: body.trim() ? body.trim().split(/\s+/).length : 0,
       charCount: body.length,
       entityCount: Object.values(entities.unknown).length,
       semanticCount: Object.keys(semantics).length,
-      tagCount: tags.length,
+      tagCount: Object.keys(tags).length,
       linkCount:
         Object.keys(links.wikilinks).length +
         Object.keys(links.transclusions).length +
@@ -167,6 +244,7 @@ export class MetadataExtractor {
       structure,
       flags,
       tags,
+      tasks,
       stats
     };
   }
