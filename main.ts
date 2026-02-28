@@ -10,6 +10,9 @@ import { createMetadataIndexer } from "./common/metadataindexer.ts";
 import { readdir, readFile } from "node:fs/promises";
 import { createServerDB } from "./common/server-db.ts";
 import { addToIndex, searchindex } from "./search.ts";
+//import { FriendlyQuery, QueryBuilder, QueryParser } from "./common/queryParser.ts";
+import { DBInterface } from "./common/db-interface.ts";
+
 
 const log = new Logger("main");
 const NOTES_DIR = resolve("static/notes");
@@ -215,6 +218,22 @@ app.use(async (ctx, next) => {
       await next();
       return;
     }
+    if (pathname === "/static/dist/prqlc_js.js") {
+      // Serve the wasm file from wherever it’s located
+      await send(ctx, "../node_modules/prqlc/dist/web/prqlc_js.js", {
+        root: Deno.cwd(), // root folder of your project
+        contentType: "application/javascript", // ensure correct MIME type
+      });
+      return;
+    }
+    if (pathname === "/static/dist/prqlc_js_bg.wasm") {
+      // Serve the wasm file from wherever it’s located
+      await send(ctx, "static/dist/prqlc_js_bg.wasm", {
+        root: Deno.cwd(), // root folder of your project
+        contentType: "application/wasm", // ensure correct MIME type
+      });
+      return;
+    }
     // Only handle static
     if (pathname.startsWith("/static/")) {
         try {
@@ -275,7 +294,7 @@ async function walk(dir: string): Promise<string[]> {
   return files.flat();
 }
 
-async function updateMetadata(){
+async function updateMetadata():DBInterface{
   log.info("Filling db");
 
   const db = createServerDB("vantagenotes.db");
@@ -283,17 +302,14 @@ async function updateMetadata(){
   await metadataIndexer.init();
 
   const files = await walk("static/notes");
-  
-  
-  
-  
-  
+  //const metadataArray = []
   for (const filePath of files) {
     try {
       const text = await readFile(filePath, "utf8");
 
       const metadata = await MetadataExtractor.extractMetadata(text);
       log.debug(`metadata for file ${filePath}`)
+      //metadataArray.push({filePath, metadata})
       
 
       // Use relative path without extension as docId
@@ -308,14 +324,23 @@ async function updateMetadata(){
       log.error(`Failed to index ${filePath}`, err);
     }
   }
-  console.log("###############DONE#################")
+  
+  return db
 }
+
 // ─── Start servers ─────────────────────────────
 async function main() {
 
   log.info("Filling db")
-  await updateMetadata()
-  
+  const db = await updateMetadata()
+  //await querytest()
+  const res = await db.pquery(`
+    from tasks
+    select {document_id, task_content, task_complete}
+    take 10
+    `);
+
+  log.debug(res)
   const port = Deno.env.get("PORT");
   const ws_port = Deno.env.get("WS_PORT");
   log.info("http port is:", port, "WS port is:", ws_port)

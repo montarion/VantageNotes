@@ -53,3 +53,18 @@ window.addEventListener("popstate", async () => {
     await app.navigation.switchTab(path);
   }
 });
+
+// do search stuff
+document.getElementById("search-input")?.addEventListener("keyup", async (e) => {
+  let res = await app.search.search(e.target.value)
+  console.log(res)
+  app.navigation.displaySearchResults(res.results)
+})
+
+let res = await app.db.pquery(`
+    from tasks
+    select {document_id, task_content, task_complete}
+    take 10
+    `)
+
+log.debug(res)
