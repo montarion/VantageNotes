@@ -10,7 +10,6 @@ import { createMetadataIndexer } from "./common/metadataindexer.ts";
 import { readdir, readFile } from "node:fs/promises";
 import { createServerDB } from "./common/server-db.ts";
 import { addToIndex, searchindex } from "./search.ts";
-//import { FriendlyQuery, QueryBuilder, QueryParser } from "./common/queryParser.ts";
 import { DBInterface } from "./common/db-interface.ts";
 
 
@@ -21,6 +20,7 @@ const SPA_PREFIX = "/";       // the URL prefix that triggers SPA fallbac
 
 const app = new Application();
 const router = new Router();
+let db;
 
 // ─── Build file tree ─────────────────────────────
 async function buildFileTree(path: string): Promise<any[]> {
@@ -100,6 +100,67 @@ router.get("/api/metadata/:filename?", async (ctx) => {
     }
     ctx.response.body = allMeta;
   }
+});
+
+router.get("/api/sync", async (ctx) => {
+  const sinceParam = ctx.request.url.searchParams.get("since");
+  const since = sinceParam ? Number(sinceParam) : 0;
+
+  if (Number.isNaN(since)) {
+    ctx.response.status = 400;
+    ctx.response.body = { error: "Invalid 'since' parameter" };
+    return;
+  }
+
+  const serverTime = Date.now();
+
+  // 1️⃣ Get changes since timestamp
+  const changes = await db.all(
+    `
+    SELECT id, table_name, row_id, action, updated_at
+    FROM changes
+    WHERE updated_at > ?
+    ORDER BY updated_at ASC
+    `,
+    [since]
+  );
+
+  const result: any[] = [];
+
+  for (const change of changes) {
+    const { table_name, row_id, action, updated_at } = change;
+
+    if (action === "delete") {
+      result.push({
+        table: table_name,
+        action,
+        row_id,
+        updated_at,
+      });
+      continue;
+    }
+
+    // For insert/update → fetch full row
+    const rows = await db.all(
+      `SELECT * FROM ${table_name} WHERE id = ?`,
+      [row_id]
+    );
+
+    if (rows.length === 0) continue;
+
+    result.push({
+      table: table_name,
+      action,
+      row: rows[0],
+      updated_at,
+    });
+  }
+
+  ctx.response.headers.set("Content-Type", "application/json");
+  ctx.response.body = {
+    serverTime,
+    changes: result,
+  };
 });
 // search
 
@@ -332,7 +393,7 @@ async function updateMetadata():DBInterface{
 async function main() {
 
   log.info("Filling db")
-  const db = await updateMetadata()
+  db = await updateMetadata()
   //await querytest()
   const res = await db.pquery(`
     from tasks
