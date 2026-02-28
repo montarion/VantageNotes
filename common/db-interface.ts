@@ -6,4 +6,5 @@ export interface DBInterface {
     run(sql: string, params?: any[]): Promise<void>;
     all(sql: string, params?: any[]): Promise<any[]>;
     transaction<T>(fn: (tx: DBInterface) => Promise<T>): Promise<T>;
+    pquery(prql: string): Promise<void>;
   }

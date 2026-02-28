@@ -1,6 +1,7 @@
 // server-db.ts
 import { DBInterface } from "./db-interface.ts";
 import { DB } from "https://deno.land/x/sqlite/mod.ts";
+import prqlc from "npm:prqlc"
 
 /**
  * Wraps deno-sqlite DB to implement DBInterface
@@ -13,10 +14,10 @@ export function createServerDB(path: string): DBInterface {
       db.execute(sql); // deno-sqlite executes directly
     },
     async query(sql: string) {
-      db.query(sql);
+      return db.query(sql);
     },
     async run(sql: string, params: any[] = []) {
-      db.query(sql, params);
+      return db.query(sql, params);
     },
 
     async all(sql: string, params: any[] = []) {
@@ -37,6 +38,9 @@ export function createServerDB(path: string): DBInterface {
         await db.query("ROLLBACK");
         throw err;
       }
+    },
+    async pquery(prql:string) {
+      return db.query(prqlc.compile(prql));
     },
   };
 }
