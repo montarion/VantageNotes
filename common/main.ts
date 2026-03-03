@@ -63,8 +63,16 @@ document.getElementById("search-input")?.addEventListener("keyup", async (e) => 
 
 let res = await app.db.pquery(`
     from tasks
-    select {document_id, task_content, task_complete}
+    filter (entities | text.contains("daen"))
+    select {page=document_id,task_content,finished=task_complete,}
     take 10
     `)
 
 log.debug(res)
+
+// task toggle test
+
+app.events.emit("task:toggle-requested", {
+  docId: "tests/tasks",
+  from: 22
+});
