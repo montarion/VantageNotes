@@ -2,65 +2,90 @@
 import { ViewPlugin, ViewUpdate, Decoration, DecorationSet, WidgetType, EditorView } from "npm:@codemirror/view";
 import { syntaxTree, syntaxTreeAvailable } from "npm:@codemirror/language";
 import { Transaction } from "npm:@codemirror/state";
+import { getApp } from "../common/app.ts";
+import { Events } from "../common/events.ts";
+import { Logger } from "../common/logger.ts";
+const log = new Logger({ namespace: "markdownlistDecorator" });
+
 
 export type ListItem = { from: number; to: number; text: string; checked?: boolean; indent: number };
 
 class CheckboxWidget extends WidgetType {
-    checked: boolean;
-    from: number;
-    view: EditorView;
-  
-    constructor(view: EditorView, from: number, checked: boolean) {
-      super();
-      this.view = view;
-      this.from = from;
-      this.checked = checked;
-    }
-  
-    toDOM() {
-      const wrapper = document.createElement("span");
-      wrapper.className = "cm-checklist-widget";
-      wrapper.setAttribute("role", "checkbox");
-      wrapper.setAttribute("aria-checked", String(this.checked));
-  
-      const box = document.createElement("input");
-      box.type = "checkbox";
-      box.checked = this.checked;
-      box.tabIndex = -1; // prevent focus stealing
-  
-      wrapper.appendChild(box);
-  
-      // 👇 THIS is the key part
-      wrapper.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.toggle();
-      });
-  
-      return wrapper;
-    }
-  
-    toggle() {
-      const line = this.view.state.doc.lineAt(this.from);
-      const newText = line.text.replace(
-        /^(\s*-\s*\[)[^\]]*(\])/,
-        `$1${this.checked ? " " : "x"}$2`
-      );
-  
-      this.view.dispatch({
-        changes: { from: line.from, to: line.to, insert: newText },
-        annotations: [
-          Transaction.userEvent.of("input.checkbox"),
-        ],
-        scrollIntoView: true,
-      });
-      
-    }
-  
-    ignoreEvent() {
-      return false; // IMPORTANT: let widget fully handle events
-    }
+  checked: boolean;
+  from: number;
+  view: EditorView;
+  page: string;
+  events: Events;
+  unsubscribe?: () => void;
+
+  constructor(view: EditorView, from: number, checked: boolean) {
+    super();
+    this.view = view;
+    this.from = from;
+    this.checked = checked;
+
+    const { navigation, events } = getApp();
+    this.page = navigation.currentPage;
+    this.events = events;
+
+    // 👇 Listen to global toggle requests
+    this.unsubscribe = this.events.on(
+      "task:toggle-requested",
+      ({ docId, from }) => {
+        log.debug(`Toggle requested!`)
+        log.debug(`docid: ${docId}/${this.page} - from: ${from}/${this.from}`)
+        if (docId === this.page && from === this.from) {
+          this.toggle();
+        }
+      }
+    );
   }
+
+  toDOM() {
+    const wrapper = document.createElement("span");
+    wrapper.className = "cm-checklist-widget";
+
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = this.checked;
+    box.tabIndex = -1;
+
+    wrapper.appendChild(box);
+
+    wrapper.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.toggle();
+    });
+
+    return wrapper;
+  }
+
+  toggle() {
+    const line = this.view.state.doc.lineAt(this.from);
+    const newText = line.text.replace(
+      /^(\s*-\s*\[)[^\]]*(\])/,
+      `$1${this.checked ? " " : "x"}$2`
+    );
+
+    this.view.dispatch({
+      changes: { from: line.from, to: line.to, insert: newText },
+      annotations: [
+        Transaction.userEvent.of("input.checkbox"),
+      ],
+      scrollIntoView: true,
+    });
+  }
+
+  destroy() {
+    // 👇 VERY IMPORTANT
+    this.unsubscribe?.();
+  }
+
+  ignoreEvent() {
+    return false;
+  }
+}
 class RadioDotWidget extends WidgetType {
   indent: number;
 
