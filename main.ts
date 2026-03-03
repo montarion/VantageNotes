@@ -130,6 +130,24 @@ router.get("/api/sync", async (ctx) => {
   for (const change of changes) {
     const { table_name, row_id, action, updated_at } = change;
 
+    // sql injection protection
+
+    const ALLOWED_TABLES = new Set([
+      "documents",
+      "frontmatter",
+      "tasks",
+      "tags",
+      "entities",
+      "semantics",
+      "wikilinks",
+      "transclusions",
+      "external_links",
+      "headers",
+    ]);
+    
+    if (!ALLOWED_TABLES.has(table_name)) continue;
+
+
     if (action === "delete") {
       result.push({
         table: table_name,
@@ -174,28 +192,25 @@ router.get("/api/search", async (ctx) => {
       return;
     }
 
-    // Perform search using FlexSearch
-    // Replace 'index' with your actual FlexSearch.Document instance
-    const results = await searchindex.search(query, { field: ["text", "title", "tags", "entities", "wikilinks"], limit: 20 });
-    log.debug("tryuing to read")
-    log.debug(results)
-    log.debug("abovce")
-    // FlexSearch.Document search returns array of { result: [docIds] } per field
-    // Flatten results and remove duplicates
-    const docIds = new Set<string>();
-    for (const fieldResult of results) {
-      if (Array.isArray(fieldResult.result)) {
-        fieldResult.result.forEach(id => docIds.add(id));
-      } else if (Array.isArray(fieldResult)) {
-        fieldResult.forEach(id => docIds.add(id));
-      }
-    }
+    // Fuse search (no field config needed — already configured)
+    const results = searchindex.search(query);
+
+    // Limit to 20 results
+    const limited = results.slice(0, 20);
+
+    // Extract docIds
+    const docIds = limited.map(doc => doc.docId);
 
     ctx.response.status = 200;
     ctx.response.body = {
       query,
-      results: Array.from(docIds),
+      results: limited.map(doc => ({
+        id: doc.docId,
+        title: doc.metadata.frontmatter?.title ?? doc.docId,
+        tags: doc.metadata.tags,
+      })),
     };
+
   } catch (err) {
     console.error("Search error:", err);
     ctx.response.status = 500;
@@ -371,7 +386,7 @@ async function updateMetadata():DBInterface{
       const metadata = await MetadataExtractor.extractMetadata(text);
       log.debug(`metadata for file ${filePath}`)
       //metadataArray.push({filePath, metadata})
-      
+      log.debug(metadata)
 
       // Use relative path without extension as docId
       const docId = filePath
@@ -380,7 +395,7 @@ async function updateMetadata():DBInterface{
 
       await metadataIndexer.indexDocument(docId, metadata);
       // add to searchindex
-      addToIndex(searchindex, docId, text, metadata)
+      addToIndex(docId, text, metadata)
     } catch (err) {
       log.error(`Failed to index ${filePath}`, err);
     }
