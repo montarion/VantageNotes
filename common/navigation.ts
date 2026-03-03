@@ -19,10 +19,12 @@ export class Navigation {
   notesTree: NoteNode[] = [];
   notesMap: Record<string, Note> = {};
   activePath: string | null = null;
+  currentPage: string
 
   navdiv = document.querySelector("nav") as HTMLElement;
   sidediv = document.querySelector("#sidebar") as HTMLElement;
   sidebar = new Sidebar(this.sidediv);
+  
 
   // ────────────── Wiring ──────────────
   
@@ -195,7 +197,7 @@ export class Navigation {
 
   async switchTab(docId: string) {
     if (!this.editor) return;
-
+    this.currentPage = docId
     const clean = docId.replace(/\.md$/, "");
     this.setTabInPath(clean);
 
@@ -255,6 +257,7 @@ export class Navigation {
     searchgroup.id = "searchgroup";
   
     results.forEach(res => {
+      title = res.id
       const li = document.createElement("div");
       li.classList.add("search-item", "file");
   
@@ -264,7 +267,7 @@ export class Navigation {
       const label = document.createElement("span");
       label.classList.add("label");
       label.textContent = decodeURI(
-        res.endsWith(".md") ? res.slice(0, -3) : res
+        title.endsWith(".md") ? title.slice(0, -3) : title
       );
   
       row.appendChild(label);
@@ -277,8 +280,8 @@ export class Navigation {
       row.addEventListener("click", async (e) => {
         e.stopPropagation();
         this.hideSearchResults();
-        this.activePath = res;
-        await this.switchTab(res);
+        this.activePath = title;
+        await this.switchTab(title);
         this.populateNavigation();
       });
   
@@ -290,6 +293,5 @@ export class Navigation {
 
   hideSearchResults(){
     document.getElementById("searchgroup")?.remove()
-    log.debug("tried to remove searchgroup")
   }
 }
