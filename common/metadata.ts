@@ -9,7 +9,7 @@ const log = new Logger({ namespace: "Metadata.ts" });
 export interface ExtractedTask {
   task_content: string;
   task_complete: boolean;
-  due_date: number | null;
+  due_date: string | null;
   priority: number | null;
   line_number: number;
   position: number;
@@ -83,7 +83,7 @@ export class MetadataExtractor {
     }
 
     /* ───── Wikilinks [[note|alias]] ───── */
-    const wikiRe = /(?<!!)\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g;
+    const wikiRe = /(?<![@!])\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g;
     for (const m of body.matchAll(wikiRe)) {
       const target = m[1];
       const alias = m[2];
@@ -169,13 +169,12 @@ export class MetadataExtractor {
       let content = taskMatch[3].trim();
 
       // ---- Due Date Parsing ----
-      let due_date: number | null = null;
+      let due_date: string | null = null;
       const dueMatch = content.match(/due:(\d{4}-\d{2}-\d{2})/);
       if (dueMatch) {
-        const parsed = Date.parse(dueMatch[1]);
-        if (!isNaN(parsed)) {
-          due_date = parsed;
-        }
+        due_date = new Date(dueMatch[1]).toISOString().slice(0,10);
+        
+        
         content = content.replace(dueMatch[0], "").trim();
       }
 
@@ -208,7 +207,7 @@ export class MetadataExtractor {
       }
 
       // Remove entity syntax from display content if desired
-      content = content.replace(taskEntityRe, "").trim();
+      //content = content.replace(taskEntityRe, "").trim();
 
       
       tasks.push({

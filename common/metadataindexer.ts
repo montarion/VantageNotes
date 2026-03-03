@@ -51,7 +51,7 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
         document_id TEXT NOT NULL,
         task_content TEXT NOT NULL,
         task_complete BOOL NOT NULL,
-        due_date INTEGER,
+        due_date DATETIME,
         priority INTEGER,
         line_number INTEGER,
         position INTEGER,
@@ -285,6 +285,7 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
           Tasks
         ------------------------- */
         for (const task of metadata.tasks) {
+
           await tx.run(
             `
               INSERT INTO tasks (
