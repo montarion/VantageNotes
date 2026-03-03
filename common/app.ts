@@ -3,6 +3,7 @@
 
 import { initBrowserDB } from "./browser-db.ts";
 import { createDocumentManager } from "./documentManager.ts";
+import { AppEvents, Events } from "./events.ts";
 import { Logger } from "./logger.ts";
 import { MetadataExtractor } from "./metadata.ts";
 import { MetadataIndexer, createMetadataIndexer } from "./metadataindexer.ts";
@@ -16,6 +17,7 @@ export interface AppContext {
   db: DBInterface;
   metadataIndexer: MetadataIndexer;
   search: Search;
+  events: Events;
   
 }
 
@@ -41,6 +43,7 @@ export async function createApp(): Promise<AppContext> {
     const search = new Search({
       mode: "remote",
     });
+    const events = new Events<AppEvents>();
     
-  return { documentManager, navigation, db, metadataIndexer, search};
+  return { documentManager, navigation, db, metadataIndexer, search, events};
 }
