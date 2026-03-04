@@ -211,7 +211,7 @@ export class Navigation {
     // Use the editor method to switch document cleanly
     this.editor.switchDocument(doc);
     
-    this.sidebar.load(docId)
+    this.sidebar.load(clean)
     this.editor.focus();
   }
   async getFile(docId: string): Promise<string> {
