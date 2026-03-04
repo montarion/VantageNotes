@@ -94,7 +94,6 @@ export interface VNObject {
       this.clear();
       const {documentManager} = getApp()
       const objects = await this.buildObjectsFromMetadata(await documentManager.getText(noteId))
-      log.debug({objects})
       // Render each object as a card
       objects.forEach((obj) => {
         const card = this.createObjectCard(obj);
