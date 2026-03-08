@@ -23,7 +23,7 @@ export interface Metadata {
   links: Record<string, any>;
   structure: Record<string, any>;
   flags: Record<string, boolean>;
-  tags: String[];
+  tags: Record<string, number>;
   tasks: ExtractedTask[];
   stats: Record<string, number>;
 }
