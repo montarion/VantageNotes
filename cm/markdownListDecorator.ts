@@ -34,7 +34,9 @@ class CheckboxWidget extends WidgetType {
       ({ docId, from }) => {
         log.debug(`Toggle requested!`)
         log.debug(`docid: ${docId}/${this.page} - from: ${from}/${this.from}`)
-        if (docId === this.page && from === this.from) {
+        log.debug((docId === null || docId === this.page))
+        if ((docId === null || docId === this.page) && from == this.from) {
+          log.debug("fired toggle!")
           this.toggle();
         }
       }
@@ -63,17 +65,23 @@ class CheckboxWidget extends WidgetType {
 
   toggle() {
     const line = this.view.state.doc.lineAt(this.from);
+  
+    const match = line.text.match(/^(\s*-\s*\[)([^\]]*)(\])/);
+    if (!match) return;
+  
+    const currentlyChecked = match[2].trim() !== "";
+  
     const newText = line.text.replace(
       /^(\s*-\s*\[)[^\]]*(\])/,
-      `$1${this.checked ? " " : "x"}$2`
+      `$1${currentlyChecked ? " " : "x"}$2`
     );
-
+  
     this.view.dispatch({
       changes: { from: line.from, to: line.to, insert: newText },
       annotations: [
         Transaction.userEvent.of("input.checkbox"),
       ],
-      scrollIntoView: true,
+      scrollIntoView: false,
     });
   }
 
