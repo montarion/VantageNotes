@@ -22,8 +22,10 @@ export class Navigation {
   currentPage: string
 
   navdiv = document.querySelector("nav") as HTMLElement;
-  sidediv = document.querySelector("#sidebar") as HTMLElement;
-  sidebar = new Sidebar(this.sidediv);
+  sidebar: Sidebar;
+  sidediv: any;
+  
+  
   
 
   // ────────────── Wiring ──────────────
@@ -189,7 +191,7 @@ export class Navigation {
       
       this.populateNavigation();
     } catch (err) {
-      console.error(err);
+      log.error(err);
     }
   }
 
@@ -202,7 +204,8 @@ export class Navigation {
     this.setTabInPath(clean);
 
     // Open the document via DocumentManager
-    const {documentManager, metadataIndexer} = getApp()
+    const {documentManager, metadataIndexer, sidebar} = getApp()
+    this.sidebar = sidebar
     const doc = await documentManager.open(clean, { online: true });
     
     // parse metadata //TODO: make that cache

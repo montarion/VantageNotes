@@ -8,7 +8,9 @@ import { Logger } from "./logger.ts";
 import { MetadataExtractor } from "./metadata.ts";
 import { MetadataIndexer, createMetadataIndexer } from "./metadataindexer.ts";
 import { Navigation } from "./navigation.ts";
+
 import { Search } from "./search.ts";
+import { Sidebar } from "./sidebar.ts";
 const log = new Logger({ namespace: "Appcontext" });
 
 export interface AppContext {
@@ -18,6 +20,7 @@ export interface AppContext {
   metadataIndexer: MetadataIndexer;
   search: Search;
   events: Events;
+  sidebar: Sidebar;
   
 }
 
@@ -44,6 +47,8 @@ export async function createApp(): Promise<AppContext> {
       mode: "remote",
     });
     const events = new Events<AppEvents>();
+    const sidediv = document.querySelector("#sidebar") as HTMLElement;
+    const sidebar = new Sidebar(sidediv);
     
-  return { documentManager, navigation, db, metadataIndexer, search, events};
+  return { documentManager, navigation, db, metadataIndexer, search, events, sidebar};
 }
