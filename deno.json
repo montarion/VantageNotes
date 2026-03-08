@@ -2,7 +2,7 @@
   "tasks": {
     "watch": "deno run --allow-read --allow-write --allow-env --allow-net --allow-run watcher.ts",
     "bundle": "deno bundle --platform=browser --sourcemap /home/jamiro/code/vantagenotes/common/main.ts -o static/dist/main.bundle.js",
-    "run": "deno run --unstable-kv  --allow-ffi --allow-read=.env,.env.defaults,.env.example,templates/,./static/,./yjs.sqlite,./yjs.sqlite-journal,/home/jamiro/.cache/deno/plug,vantagenotes.db,vantagenotes.db-journal --allow-net --allow-env --allow-write=./static/notes/,./yjs.sqlite,./yjs.sqlite-journal,vantagenotes.db,vantagenotes.db-journal main.ts"
+    "run": "deno run --unstable-kv  --allow-ffi --allow-read=.env,.env.defaults,.env.example,templates/,./static/,./yjs.sqlite,./yjs.sqlite-journal,/home/jamiro/.cache/deno/plug,vantagenotes.db,vantagenotes.db-journal,/home/jamiro/code/vantagenotes/node_modules/.deno/prqlc@0.13.10/node_modules/prqlc/dist/node/prqlc_js_bg.wasm --allow-net --allow-env --allow-write=./static/notes/,./yjs.sqlite,./yjs.sqlite-journal,vantagenotes.db,vantagenotes.db-journal main.ts"
   },
   "compilerOptions": {
     "strict": true,
