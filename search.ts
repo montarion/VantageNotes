@@ -82,5 +82,4 @@ export function addToIndex(
     metadata,
   });
 
-  log.debug(`Indexed ${docName}`);
 }

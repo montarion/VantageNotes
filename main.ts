@@ -13,7 +13,7 @@ import { addToIndex, searchindex } from "./search.ts";
 import { DBInterface } from "./common/db-interface.ts";
 
 
-const log = new Logger("main");
+const log = new Logger({ namespace: "Server" });
 const NOTES_DIR = resolve("static/notes");
 const SPA_ROOT = "templates"; // points to the real folder
 const SPA_PREFIX = "/";       // the URL prefix that triggers SPA fallbac
@@ -212,7 +212,7 @@ router.get("/api/search", async (ctx) => {
     };
 
   } catch (err) {
-    console.error("Search error:", err);
+    log.error("Search error:", err);
     ctx.response.status = 500;
     ctx.response.body = { error: "Internal server error" };
   }
@@ -270,7 +270,7 @@ app.use(router.allowedMethods());
 
 // SPA middleware
 app.use(async (ctx, next) => {
-  if (ctx.response.body !== undefined || ctx.response.status !== 404) {
+  if (ctx.response.body !== undefined) {
     return;
   }
     const { pathname } = ctx.request.url;
@@ -384,9 +384,7 @@ async function updateMetadata():DBInterface{
       const text = await readFile(filePath, "utf8");
 
       const metadata = await MetadataExtractor.extractMetadata(text);
-      log.debug(`metadata for file ${filePath}`)
       //metadataArray.push({filePath, metadata})
-      log.debug(metadata)
 
       // Use relative path without extension as docId
       const docId = filePath
@@ -416,12 +414,11 @@ async function main() {
     take 10
     `);
 
-  log.debug(res)
   const port = Deno.env.get("PORT");
   const ws_port = Deno.env.get("WS_PORT");
   log.info("http port is:", port, "WS port is:", ws_port)
   
-  serveYjs({
+  await serveYjs({
     port: ws_port,
     persistence: "sqlite",
     sqlitePath: Deno.env.get("DB_PATH")

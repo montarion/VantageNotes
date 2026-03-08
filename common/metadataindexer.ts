@@ -141,7 +141,7 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
   }
 
   async function indexDocument(docId: string, metadata: Metadata) {
-    console.debug(`updating index for id ${docId} `)
+    log.debug(`updating index for id ${docId} `)
     try{
       await db.transaction(async (tx: any) => {
         // Remove previous index for this doc (inside same transaction)
@@ -323,9 +323,9 @@ export function createMetadataIndexer(db: any): MetadataIndexer {
         
       });
     }catch(err){
-      console.error(err)
+      log.error(err)
     }
-    console.debug("finished transaction")
+    log.debug("finished transaction")
   }
 
   return {
