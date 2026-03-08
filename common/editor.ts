@@ -29,6 +29,7 @@ import { blockquoteRenderer } from "../cm/blockquoteplugin.ts";
 import { codeblockRenderer } from "../cm/codeblockplugin.ts";
 import { atNoteCompletion, wikiLinkCompletion } from "../cm/autocompleteProviders.ts";
 import { clickHandler } from "../cm/clickhandler.ts";
+import { sidebarUpdatePlugin } from "../cm/sidebarPlugin.ts";
 
 const log = new Logger({ namespace: "Editor" });
 
@@ -74,6 +75,7 @@ function createbaseExtensions(){
     linkClickHandler,
     dslLanguage,
     clickHandler,
+    sidebarUpdatePlugin
     
     
     //clickableLinks,
@@ -96,7 +98,7 @@ export class YjsEditor {
         const target = event.target as HTMLElement;
     
         if (target.dataset.action === "run-code") {
-          console.log("run clicked");
+          log.info("run clicked");
           return true; // handled
         }
     
