@@ -7,12 +7,16 @@
 // 3. Keep rendering logic simple + replaceable later
 // ---------------------------------------
 
-import { MetadataExtractor } from "./metadata.ts";
+import { Metadata, MetadataExtractor } from "./metadata.ts";
 import "./webcomponents/index.ts"
 import { Logger } from "./logger.ts";
 import { getApp } from "./app.ts";
+import { ViewPlugin } from "npm:@codemirror/view";
 
 const log = new Logger({ namespace: "Sidebar" });
+
+
+
 
 export interface FieldDefinition {
   key: string;                  // property key
@@ -79,8 +83,14 @@ export interface VNObject {
     private container: HTMLElement;
     private currentNoteId: string | null = null;
   
+    private pageComponent: any | null = null;
+    private objectMap = new Map<string, HTMLElement>();
+    private updateTimer: number | null = null;
+    unsubscribe?: () => void;
+
     constructor(container: HTMLElement) {
       this.container = container;
+      
     }
   
     /**
@@ -89,20 +99,64 @@ export interface VNObject {
      */
     async load(noteId: string) {
       this.currentNoteId = noteId;
-  
-      // Clear sidebar before rendering new content
-      this.clear();
-      const {documentManager} = getApp()
-      const objects = await this.buildObjectsFromMetadata(await documentManager.getText(noteId))
-      // Render each object as a card
-      objects.forEach((obj) => {
-        const card = this.createObjectCard(obj);
-        this.container.appendChild(card);
-      });
+    
+      const { documentManager } = getApp();
+      const text = await documentManager.getText(noteId);
+      const metadata = await MetadataExtractor.extractMetadata(text);
+    
+      /* create page component once */
+      if (!this.pageComponent) {
+        this.pageComponent = document.createElement("vn-page") as any;
+        this.container.appendChild(this.pageComponent);
+      }
+    
+      this.pageComponent.data = {
+        id: noteId,
+        type: "page",
+        title: noteId,
+        properties: { metadata }
+      };
+    
+      const objects = await this.buildObjectsFromMetadata(metadata);
+    
+      this.updateObjects(objects);
     }
-  
-    private async buildObjectsFromMetadata(noteText: string): Promise<VNObject[]> {
-      const metadata = await MetadataExtractor.extractMetadata(noteText);
+    private updateObjects(objects: VNObject[]) {
+      const seen = new Set<string>();
+    
+      for (const obj of objects) {
+        seen.add(obj.id);
+    
+        let el = this.objectMap.get(obj.id);
+    
+        if (!el) {
+          el = this.createObjectCard(obj);
+          this.objectMap.set(obj.id, el);
+          this.container.appendChild(el);
+        } else {
+          (el as any).data = obj;
+        }
+      }
+    
+      /* remove deleted objects */
+      for (const [id, el] of this.objectMap) {
+        if (!seen.has(id)) {
+          el.remove();
+          this.objectMap.delete(id);
+        }
+      }
+    }
+
+    scheduleUpdate() {
+      if (this.updateTimer) clearTimeout(this.updateTimer);
+    
+      this.updateTimer = window.setTimeout(() => {
+        if (!this.currentNoteId) return;
+        this.load(this.currentNoteId);
+      }, 120);
+    }
+
+    private async buildObjectsFromMetadata(metadata: Metadata): Promise<VNObject[]> {
       const objects: VNObject[] = [];
     
       /* ───── Wikilinks → link objects ───── */
@@ -178,7 +232,7 @@ export interface VNObject {
       const tag = `vn-${obj.type}`;
     
       if (!customElements.get(tag)) {
-        console.warn(`No component registered for ${obj.type}`);
+        log.warn(`No component registered for ${obj.type}`);
         return this.renderDefault(obj, {
           layout: "default",
           fields: Object.keys(obj.properties).map(k => ({ key: k }))
@@ -278,4 +332,6 @@ export interface VNObject {
     private clear() {
       this.container.innerHTML = "";
     }
+
+    
   }
